@@ -4,35 +4,32 @@ import { createClient } from "@/lib/supabase-server"
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const secret_token = body.secret_token || body.token
-    const sender_id = body.sender_id || "n8n"
-    const messages = body.messages || []
+    const token = body.token
 
-    if (!secret_token) {
+    if (!token || token !== process.env.SECRET_TOKEN) {
       return NextResponse.json(
-        { error: "secret_token manquant" },
+        { error: "Unauthorized" },
         { status: 401 }
       )
     }
 
-    const { secret_token: _, token: _t, ...orderData } = body
+    const { token: _t, ...orderData } = body
 
     const supabase = await createClient()
 
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile } = await supabase
       .from("profiles")
       .select("id")
-      .eq("secret_token", secret_token)
       .single()
 
-    if (profileError || !profile) {
+    if (!profile) {
       return NextResponse.json(
-        { error: "Token invalide" },
-        { status: 401 }
+        { error: "Aucun profil trouvé" },
+        { status: 500 }
       )
     }
 
-    const { data: order, error: orderError } = await supabase
+    const { error: orderError } = await supabase
       .from("commandes")
       .insert({
         user_id: profile.id,
@@ -45,10 +42,8 @@ export async function POST(request: Request) {
         taille: orderData.taille || "",
         total: orderData.total || 0,
         statut: orderData.statut || "en_attente",
-        date: orderData.date || new Date().toISOString(),
+        date: orderData.date || new Date().toISOString().split("T")[0],
       })
-      .select()
-      .single()
 
     if (orderError) {
       return NextResponse.json(
@@ -57,28 +52,19 @@ export async function POST(request: Request) {
       )
     }
 
-    if (orderData.statut === "confirmée") {
-      const productNames = (orderData.produits || orderData.produit || "")
-        .split(",")
-        .map((p: string) => p.trim())
-        .filter(Boolean)
+    const productNames = (orderData.produits || orderData.produit || "")
+      .split(",")
+      .map((p: string) => p.trim())
+      .filter(Boolean)
 
-      for (const name of productNames) {
-        await supabase.rpc("decrement_stock", {
-          p_user_id: profile.id,
-          p_product_name: name,
-        })
-      }
+    for (const name of productNames) {
+      await supabase.rpc("decrement_stock", {
+        p_user_id: profile.id,
+        p_product_name: name,
+      })
     }
 
-    await supabase.from("conversations").insert({
-      user_id: profile.id,
-      sender_id,
-      messages,
-      date: new Date().toISOString(),
-    })
-
-    return NextResponse.json({ success: true, order }, { status: 201 })
+    return NextResponse.json({ success: true })
   } catch {
     return NextResponse.json(
       { error: "Erreur serveur" },

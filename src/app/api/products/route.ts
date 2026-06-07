@@ -6,45 +6,31 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const token = searchParams.get("token")
 
-    if (!token) {
+    if (!token || token !== process.env.SECRET_TOKEN) {
       return NextResponse.json(
-        { error: "Token manquant" },
+        { error: "Unauthorized" },
         { status: 401 }
       )
     }
 
     const supabase = await createClient()
 
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("secret_token", token)
-      .single()
-
-    if (profileError || !profile) {
-      return NextResponse.json(
-        { error: "Token invalide" },
-        { status: 401 }
-      )
-    }
-
     const { data: produits } = await supabase
       .from("produits")
-      .select("*")
-      .eq("user_id", profile.id)
+      .select("id, nom, description, photo_url, prix, devise, tailles, couleurs, stock")
       .eq("actif", true)
       .gt("stock", 0)
       .order("nom")
 
     const { data: chatbot } = await supabase
       .from("config_chatbot")
-      .select("*")
-      .eq("user_id", profile.id)
+      .select("nom_chatbot, message_bienvenue, langue")
+      .eq("actif", true)
       .single()
 
     return NextResponse.json({
       produits: produits || [],
-      chatbot: chatbot || null,
+      config: chatbot || null,
     })
   } catch {
     return NextResponse.json(
