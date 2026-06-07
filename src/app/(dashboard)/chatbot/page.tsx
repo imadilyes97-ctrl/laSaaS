@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 import { createClient } from "@/lib/supabase"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Copy, Eye, EyeOff, RefreshCw, Bot, ImageUp, MessageSquare, User, CheckCircle2, XCircle } from "lucide-react"
+import { Copy, Eye, EyeOff, RefreshCw, Bot, ImageUp, MessageSquare, User, CheckCircle2, XCircle, AlertCircle, RotateCw } from "lucide-react"
 import { v4 as uuidv4 } from "uuid"
 import { format, parseISO } from "date-fns"
 import { fr } from "date-fns/locale"
@@ -27,6 +27,9 @@ export default function ChatbotPage() {
   const [copied, setCopied] = useState(false)
   const [saved, setSaved] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [hasError, setHasError] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
   const fileRef = useRef<HTMLInputElement>(null)
 
   const [nom_chatbot, setNomChatbot] = useState("Yasmine")
@@ -34,17 +37,41 @@ export default function ChatbotPage() {
   const [langue, setLangue] = useState("FR")
   const [photoUrl, setPhotoUrl] = useState("")
 
-  useEffect(() => {
-    const load = async () => {
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    setHasError(false)
+    setErrorMessage("")
+
+    const timeoutId = setTimeout(() => {
+      setLoading(false)
+      setHasError(true)
+      setErrorMessage("Le serveur ne répond pas. Veuillez réessayer.")
+    }, 10000)
+
+    try {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user) {
+        clearTimeout(timeoutId)
+        setLoading(false)
+        setHasError(true)
+        setErrorMessage("Vous devez être connecté.")
+        return
+      }
 
-      const { data: cfg } = await supabase
+      const { data: cfg, error: cfgError } = await supabase
         .from("config_chatbot")
         .select("*")
         .eq("user_id", user.id)
         .single()
+
+      if (cfgError && cfgError.code !== "PGRST116") {
+        clearTimeout(timeoutId)
+        setLoading(false)
+        setHasError(true)
+        setErrorMessage("Erreur de connexion à la base de données. Vérifiez que la table config_chatbot existe.")
+        return
+      }
 
       if (cfg) {
         setConfig(cfg)
@@ -53,7 +80,7 @@ export default function ChatbotPage() {
         setLangue(cfg.langue)
         setPhotoUrl(cfg.photo_profil_url)
       } else {
-        const { data: newCfg, error } = await supabase
+        const { data: newCfg, error: insertError } = await supabase
           .from("config_chatbot")
           .insert({
             user_id: user.id,
@@ -63,13 +90,20 @@ export default function ChatbotPage() {
           })
           .select()
           .single()
-        if (newCfg) {
-          setConfig(newCfg)
-          setNomChatbot(newCfg.nom_chatbot)
-          setMessageBienvenue(newCfg.message_bienvenue)
-          setLangue(newCfg.langue)
-          setPhotoUrl(newCfg.photo_profil_url)
+
+        if (insertError || !newCfg) {
+          clearTimeout(timeoutId)
+          setLoading(false)
+          setHasError(true)
+          setErrorMessage("Impossible de créer la configuration. Vérifiez que la table config_chatbot existe dans Supabase.")
+          return
         }
+
+        setConfig(newCfg)
+        setNomChatbot(newCfg.nom_chatbot)
+        setMessageBienvenue(newCfg.message_bienvenue)
+        setLangue(newCfg.langue)
+        setPhotoUrl(newCfg.photo_profil_url)
       }
 
       const { data: convs } = await supabase
@@ -80,8 +114,18 @@ export default function ChatbotPage() {
         .limit(20)
 
       if (convs) setConversations(convs)
+    } catch {
+      clearTimeout(timeoutId)
+      setHasError(true)
+      setErrorMessage("Erreur réseau. Veuillez vérifier votre connexion et réessayer.")
+    } finally {
+      clearTimeout(timeoutId)
+      setLoading(false)
     }
-    load()
+  }, [])
+
+  useEffect(() => {
+    loadData()
 
     const supabase = createClient()
     const channel = supabase
@@ -101,7 +145,7 @@ export default function ChatbotPage() {
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [])
+  }, [loadData])
 
   const uploadPhoto = async (file: File) => {
     setUploading(true)
@@ -180,10 +224,39 @@ export default function ChatbotPage() {
     setConfig((prev) => prev ? { ...prev, actif: !prev.actif } : null)
   }
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="flex flex-col items-center gap-2">
+          <RotateCw className="h-6 w-6 animate-spin text-muted-foreground" />
+          <p className="text-muted-foreground">Chargement...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (hasError) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="flex flex-col items-center gap-4 text-center max-w-md">
+          <AlertCircle className="h-12 w-12 text-destructive" />
+          <div>
+            <h2 className="text-lg font-semibold">Erreur de chargement</h2>
+            <p className="text-muted-foreground mt-1">{errorMessage}</p>
+          </div>
+          <Button onClick={loadData} variant="outline" className="gap-2">
+            <RotateCw className="h-4 w-4" />
+            Réessayer
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   if (!config) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Chargement...</p>
+        <p className="text-muted-foreground">Aucune configuration trouvée.</p>
       </div>
     )
   }

@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Plus, Pencil, Trash2, ImageUp, Package, AlertTriangle } from "lucide-react"
+import { Plus, Pencil, Trash2, ImageUp, Package, AlertTriangle, AlertCircle } from "lucide-react"
 import type { Product } from "@/lib/types"
 
 export default function ProduitsPage() {
@@ -30,6 +30,8 @@ export default function ProduitsPage() {
   const [editProduct, setEditProduct] = useState<Product | null>(null)
   const [open, setOpen] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState("")
+  const [previewUrl, setPreviewUrl] = useState("")
   const fileRef = useRef<HTMLInputElement>(null)
 
   const defaultForm = {
@@ -62,9 +64,14 @@ export default function ProduitsPage() {
 
   const uploadImage = async (file: File) => {
     setUploading(true)
+    setUploadError("")
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return ""
+    if (!user) {
+      setUploading(false)
+      setUploadError("Utilisateur non connecté")
+      return ""
+    }
 
     const ext = file.name.split(".").pop()
     const path = `${user.id}/${crypto.randomUUID()}.${ext}`
@@ -76,6 +83,7 @@ export default function ProduitsPage() {
     if (error) {
       console.error("Upload error:", error)
       setUploading(false)
+      setUploadError("Erreur lors de l'upload. Vérifiez que le bucket 'produits' existe dans Supabase Storage.")
       return ""
     }
 
@@ -90,8 +98,38 @@ export default function ProduitsPage() {
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+
+    const maxSize = 5 * 1024 * 1024
+    if (file.size > maxSize) {
+      setUploadError("L'image ne doit pas dépasser 5 Mo")
+      return
+    }
+
+    if (!file.type.startsWith("image/")) {
+      setUploadError("Le fichier doit être une image")
+      return
+    }
+
+    const objectUrl = URL.createObjectURL(file)
+    setPreviewUrl(objectUrl)
+
     const url = await uploadImage(file)
-    if (url) setForm((f) => ({ ...f, photo_url: url }))
+    if (url) {
+      setForm((f) => ({ ...f, photo_url: url }))
+      URL.revokeObjectURL(objectUrl)
+      setPreviewUrl("")
+    }
+  }
+
+  const handleDialogClose = (open: boolean) => {
+    if (!open) {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl)
+        setPreviewUrl("")
+      }
+      setUploadError("")
+    }
+    setOpen(open)
   }
 
   const handleSave = async () => {
@@ -175,7 +213,7 @@ export default function ProduitsPage() {
           <h1 className="text-3xl font-bold">Produits</h1>
           <p className="text-muted-foreground">{produits.length} produit(s)</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={handleDialogClose}>
           <DialogTrigger asChild>
             <Button onClick={() => { setEditProduct(null); setForm(defaultForm) }}>
               <Plus className="h-4 w-4 mr-2" />
@@ -192,9 +230,9 @@ export default function ProduitsPage() {
               <div className="space-y-2">
                 <Label>Photo du produit</Label>
                 <div className="flex items-center gap-4">
-                  {form.photo_url ? (
+                  {previewUrl || form.photo_url ? (
                     <img
-                      src={form.photo_url}
+                      src={previewUrl || form.photo_url}
                       alt="Preview"
                       className="w-20 h-20 object-cover rounded-lg"
                     />
@@ -216,9 +254,15 @@ export default function ProduitsPage() {
                     onClick={() => fileRef.current?.click()}
                     disabled={uploading}
                   >
-                    {uploading ? "Upload..." : "Choisir une image"}
+                    {uploading ? "Upload en cours..." : "Choisir une image"}
                   </Button>
                 </div>
+                {uploadError && (
+                  <p className="text-sm text-destructive flex items-center gap-1 mt-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {uploadError}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="nom">Nom du produit</Label>
