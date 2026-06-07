@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useMemo } from "react"
 import { createClient } from "@/lib/supabase"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -13,6 +13,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog"
 import {
   Select,
@@ -21,8 +23,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Plus, Pencil, Trash2, ImageUp, Package, AlertTriangle, AlertCircle } from "lucide-react"
+import { Plus, Pencil, Trash2, ImageUp, Package, AlertTriangle, AlertCircle, Search, X, Loader2 } from "lucide-react"
 import type { Product } from "@/lib/types"
+
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
+const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"]
+const MAX_SIZE = 5 * 1024 * 1024
 
 export default function ProduitsPage() {
   const [produits, setProduits] = useState<Product[]>([])
@@ -30,8 +36,13 @@ export default function ProduitsPage() {
   const [editProduct, setEditProduct] = useState<Product | null>(null)
   const [open, setOpen] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadError, setUploadError] = useState("")
   const [previewUrl, setPreviewUrl] = useState("")
+  const [searchQuery, setSearchQuery] = useState("")
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null)
+  const [saving, setSaving] = useState(false)
+
   const fileRef = useRef<HTMLInputElement>(null)
 
   const defaultForm = {
@@ -62,9 +73,36 @@ export default function ProduitsPage() {
 
   useEffect(() => { fetchProduits() }, [])
 
+  const filteredProduits = useMemo(() => {
+    if (!searchQuery.trim()) return produits
+
+    const q = searchQuery.toLowerCase()
+    return produits.filter((p) => {
+      const nameMatch = p.nom.toLowerCase().includes(q)
+      const tailleMatch = (p.tailles || []).some((t) => t.toLowerCase().includes(q))
+      const couleurMatch = (p.couleurs || []).some((c) => c.toLowerCase().includes(q))
+      return nameMatch || tailleMatch || couleurMatch
+    })
+  }, [produits, searchQuery])
+
+  const validateFile = (file: File): string | null => {
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      const ext = file.name.split(".").pop()?.toLowerCase()
+      if (!ext || !ALLOWED_EXTENSIONS.includes(`.${ext}`)) {
+        return "Format accepté : JPG, PNG, WEBP"
+      }
+    }
+    if (file.size > MAX_SIZE) {
+      return "Image trop grande, maximum 5MB"
+    }
+    return null
+  }
+
   const uploadImage = async (file: File) => {
     setUploading(true)
+    setUploadProgress(0)
     setUploadError("")
+
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
@@ -76,16 +114,30 @@ export default function ProduitsPage() {
     const ext = file.name.split(".").pop()
     const path = `${user.id}/${crypto.randomUUID()}.${ext}`
 
+    const progressInterval = setInterval(() => {
+      setUploadProgress((prev) => Math.min(prev + 10, 90))
+    }, 200)
+
     const { error } = await supabase.storage
       .from("produits")
       .upload(path, file)
 
+    clearInterval(progressInterval)
+
     if (error) {
-      console.error("Upload error:", error)
       setUploading(false)
-      setUploadError("Erreur lors de l'upload. Vérifiez que le bucket 'produits' existe dans Supabase Storage.")
+      setUploadProgress(0)
+      if (error.message?.includes("bucket")) {
+        setUploadError("Bucket 'produits' introuvable. Créez-le dans Supabase Storage.")
+      } else if (error.message?.includes("policy")) {
+        setUploadError("Permission refusée. Vérifiez les politiques RLS du bucket.")
+      } else {
+        setUploadError(`Erreur lors de l'upload : ${error.message}`)
+      }
       return ""
     }
+
+    setUploadProgress(100)
 
     const { data: urlData } = supabase.storage
       .from("produits")
@@ -99,16 +151,13 @@ export default function ProduitsPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    const maxSize = 5 * 1024 * 1024
-    if (file.size > maxSize) {
-      setUploadError("L'image ne doit pas dépasser 5 Mo")
+    const validationError = validateFile(file)
+    if (validationError) {
+      setUploadError(validationError)
       return
     }
 
-    if (!file.type.startsWith("image/")) {
-      setUploadError("Le fichier doit être une image")
-      return
-    }
+    setUploadError("")
 
     const objectUrl = URL.createObjectURL(file)
     setPreviewUrl(objectUrl)
@@ -116,8 +165,10 @@ export default function ProduitsPage() {
     const url = await uploadImage(file)
     if (url) {
       setForm((f) => ({ ...f, photo_url: url }))
-      URL.revokeObjectURL(objectUrl)
-      setPreviewUrl("")
+      setTimeout(() => {
+        URL.revokeObjectURL(objectUrl)
+        setPreviewUrl("")
+      }, 100)
     }
   }
 
@@ -128,14 +179,19 @@ export default function ProduitsPage() {
         setPreviewUrl("")
       }
       setUploadError("")
+      setUploadProgress(0)
     }
     setOpen(open)
   }
 
   const handleSave = async () => {
+    setSaving(true)
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user || !form.nom) return
+    if (!user || !form.nom) {
+      setSaving(false)
+      return
+    }
 
     const taillesArr = form.tailles
       .split(",")
@@ -166,6 +222,7 @@ export default function ProduitsPage() {
     setForm(defaultForm)
     setEditProduct(null)
     setOpen(false)
+    setSaving(false)
     fetchProduits()
   }
 
@@ -183,9 +240,11 @@ export default function ProduitsPage() {
     setOpen(true)
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async () => {
+    if (!deleteTarget) return
     const supabase = createClient()
-    await supabase.from("produits").delete().eq("id", id)
+    await supabase.from("produits").delete().eq("id", deleteTarget.id)
+    setDeleteTarget(null)
     fetchProduits()
   }
 
@@ -201,145 +260,198 @@ export default function ProduitsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Chargement...</p>
+        <div className="flex flex-col items-center gap-2">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <p className="text-muted-foreground">Chargement...</p>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Produits</h1>
           <p className="text-muted-foreground">{produits.length} produit(s)</p>
         </div>
-        <Dialog open={open} onOpenChange={handleDialogClose}>
-          <DialogTrigger asChild>
-            <Button onClick={() => { setEditProduct(null); setForm(defaultForm) }}>
-              <Plus className="h-4 w-4 mr-2" />
-              Ajouter un produit
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>
-                {editProduct ? "Modifier le produit" : "Nouveau produit"}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Photo du produit</Label>
-                <div className="flex items-center gap-4">
-                  {previewUrl || form.photo_url ? (
-                    <img
-                      src={previewUrl || form.photo_url}
-                      alt="Preview"
-                      className="w-20 h-20 object-cover rounded-lg"
-                    />
-                  ) : (
-                    <div className="w-20 h-20 bg-muted rounded-lg flex items-center justify-center">
-                      <ImageUp className="h-6 w-6 text-muted-foreground" />
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-64">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Rechercher par nom, taille, couleur..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 pr-8"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 top-2.5 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          <Dialog open={open} onOpenChange={handleDialogClose}>
+            <DialogTrigger asChild>
+              <Button onClick={() => { setEditProduct(null); setForm(defaultForm) }}>
+                <Plus className="h-4 w-4 mr-2" />
+                Ajouter
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>
+                  {editProduct ? "Modifier le produit" : "Nouveau produit"}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Photo du produit</Label>
+                  <div className="flex items-center gap-4">
+                    {previewUrl || form.photo_url ? (
+                      <img
+                        src={previewUrl || form.photo_url}
+                        alt="Preview"
+                        className="w-20 h-20 object-cover rounded-lg border"
+                      />
+                    ) : (
+                      <div className="w-20 h-20 bg-muted rounded-lg flex items-center justify-center border">
+                        <ImageUp className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="flex flex-col gap-2">
+                      <input
+                        ref={fileRef}
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.webp"
+                        className="hidden"
+                        onChange={handleImageSelect}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => fileRef.current?.click()}
+                        disabled={uploading}
+                      >
+                        {uploading ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Upload...
+                          </>
+                        ) : (
+                          "Choisir une image"
+                        )}
+                      </Button>
+                      <span className="text-xs text-muted-foreground">JPG, PNG, WEBP max 5MB</span>
+                    </div>
+                  </div>
+                  {uploading && (
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div
+                        className="bg-primary h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
                     </div>
                   )}
-                  <input
-                    ref={fileRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleImageSelect}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => fileRef.current?.click()}
-                    disabled={uploading}
-                  >
-                    {uploading ? "Upload en cours..." : "Choisir une image"}
-                  </Button>
+                  {uploadError && (
+                    <p className="text-sm text-destructive flex items-center gap-1 mt-1">
+                      <AlertCircle className="h-3 w-3 shrink-0" />
+                      {uploadError}
+                    </p>
+                  )}
                 </div>
-                {uploadError && (
-                  <p className="text-sm text-destructive flex items-center gap-1 mt-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {uploadError}
-                  </p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="nom">Nom du produit</Label>
-                <Input
-                  id="nom"
-                  value={form.nom}
-                  onChange={(e) => setForm((f) => ({ ...f, nom: e.target.value }))}
-                  placeholder="Ex: Robe d'été"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Input
-                  id="description"
-                  value={form.description}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, description: e.target.value }))
-                  }
-                  placeholder="Description du produit"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="prix">Prix (DA)</Label>
+                  <Label htmlFor="nom">Nom du produit</Label>
                   <Input
-                    id="prix"
-                    type="number"
-                    value={form.prix || ""}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, prix: Number(e.target.value) }))
-                    }
+                    id="nom"
+                    value={form.nom}
+                    onChange={(e) => setForm((f) => ({ ...f, nom: e.target.value }))}
+                    placeholder="Ex: Robe d'été"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="stock">Stock</Label>
+                  <Label htmlFor="description">Description</Label>
                   <Input
-                    id="stock"
-                    type="number"
-                    value={form.stock}
+                    id="description"
+                    value={form.description}
                     onChange={(e) =>
-                      setForm((f) => ({ ...f, stock: Number(e.target.value) }))
+                      setForm((f) => ({ ...f, description: e.target.value }))
                     }
+                    placeholder="Description du produit"
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="prix">Prix (DA)</Label>
+                    <Input
+                      id="prix"
+                      type="number"
+                      value={form.prix || ""}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, prix: Number(e.target.value) }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="stock">Stock</Label>
+                    <Input
+                      id="stock"
+                      type="number"
+                      value={form.stock}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, stock: Number(e.target.value) }))
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tailles">Tailles (séparées par des virgules)</Label>
+                  <Input
+                    id="tailles"
+                    value={form.tailles}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, tailles: e.target.value }))
+                    }
+                    placeholder="S, M, L, XL"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="couleurs">Couleurs (séparées par des virgules)</Label>
+                  <Input
+                    id="couleurs"
+                    value={form.couleurs}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, couleurs: e.target.value }))
+                    }
+                    placeholder="Rouge, Bleu, Noir"
+                  />
+                </div>
+                <Button onClick={handleSave} className="w-full" disabled={!form.nom || saving}>
+                  {saving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      {editProduct ? "Enregistrement..." : "Ajout..."}
+                    </>
+                  ) : (
+                    editProduct ? "Enregistrer" : "Ajouter"
+                  )}
+                </Button>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="tailles">Tailles (séparées par des virgules)</Label>
-                <Input
-                  id="tailles"
-                  value={form.tailles}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, tailles: e.target.value }))
-                  }
-                  placeholder="S, M, L, XL"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="couleurs">Couleurs (séparées par des virgules)</Label>
-                <Input
-                  id="couleurs"
-                  value={form.couleurs}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, couleurs: e.target.value }))
-                  }
-                  placeholder="Rouge, Bleu, Noir"
-                />
-              </div>
-              <Button onClick={handleSave} className="w-full" disabled={!form.nom}>
-                {editProduct ? "Enregistrer" : "Ajouter"}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
+      {searchQuery && (
+        <p className="text-sm text-muted-foreground">
+          {filteredProduits.length} résultat(s) pour &quot;{searchQuery}&quot;
+        </p>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {produits.map((p) => (
+        {filteredProduits.map((p) => (
           <Card key={p.id} className={!p.actif ? "opacity-60" : ""}>
             <CardContent className="p-4">
               <div className="aspect-square bg-muted rounded-lg mb-3 overflow-hidden">
@@ -348,8 +460,13 @@ export default function ProduitsPage() {
                     src={p.photo_url}
                     alt={p.nom}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = "none"
+                      ;(e.target as HTMLImageElement).parentElement!.querySelector(".fallback")?.classList.remove("hidden")
+                    }}
                   />
-                ) : (
+                ) : null}
+                {!p.photo_url && (
                   <div className="w-full h-full flex items-center justify-center">
                     <Package className="h-12 w-12 text-muted-foreground" />
                   </div>
@@ -371,7 +488,7 @@ export default function ProduitsPage() {
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7 text-destructive"
-                      onClick={() => handleDelete(p.id)}
+                      onClick={() => setDeleteTarget(p)}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
@@ -393,7 +510,7 @@ export default function ProduitsPage() {
                         Stock: {p.stock}
                       </Badge>
                     ) : (
-                      <Badge variant="success">Stock: {p.stock}</Badge>
+                      <Badge className="bg-green-600 hover:bg-green-700">En stock: {p.stock}</Badge>
                     )}
                   </div>
                 </div>
@@ -419,12 +536,33 @@ export default function ProduitsPage() {
             </CardContent>
           </Card>
         ))}
-        {produits.length === 0 && (
+        {filteredProduits.length === 0 && (
           <div className="col-span-full text-center py-12 text-muted-foreground">
-            Aucun produit pour le moment. Cliquez sur "Ajouter un produit" pour commencer.
+            {searchQuery
+              ? `Aucun produit trouvé pour "${searchQuery}"`
+              : 'Aucun produit pour le moment. Cliquez sur "Ajouter" pour commencer.'}
           </div>
         )}
       </div>
+
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Confirmer la suppression</DialogTitle>
+            <DialogDescription>
+              Êtes-vous sûr de vouloir supprimer <strong>{deleteTarget?.nom}</strong> ? Cette action est irréversible.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+              Annuler
+            </Button>
+            <Button variant="destructive" onClick={handleDelete}>
+              Supprimer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
