@@ -50,7 +50,7 @@ export default function DashboardPage() {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [loading, setLoading] = useState(true)
   const [newOrderAlert, setNewOrderAlert] = useState(false)
-  const alertTimeoutRef = useRef<NodeJS.Timeout>()
+  const alertTimeoutRef = useRef<NodeJS.Timeout>(undefined)
 
   const today = new Date()
 
