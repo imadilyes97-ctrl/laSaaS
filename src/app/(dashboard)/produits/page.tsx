@@ -42,6 +42,7 @@ export default function ProduitsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState("")
 
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -180,12 +181,14 @@ export default function ProduitsPage() {
       }
       setUploadError("")
       setUploadProgress(0)
+      setSaveError("")
     }
     setOpen(open)
   }
 
   const handleSave = async () => {
     setSaving(true)
+    setSaveError("")
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user || !form.nom) {
@@ -213,10 +216,20 @@ export default function ProduitsPage() {
       couleurs: couleursArr,
     }
 
+    let error: any = null
+
     if (editProduct) {
-      await supabase.from("produits").update(payload).eq("id", editProduct.id)
+      const { error: e } = await supabase.from("produits").update(payload).eq("id", editProduct.id)
+      error = e
     } else {
-      await supabase.from("produits").insert(payload)
+      const { error: e } = await supabase.from("produits").insert(payload)
+      error = e
+    }
+
+    if (error) {
+      setSaveError(error.message)
+      setSaving(false)
+      return
     }
 
     setForm(defaultForm)
@@ -428,6 +441,12 @@ export default function ProduitsPage() {
                     placeholder="Rouge, Bleu, Noir"
                   />
                 </div>
+                {saveError && (
+                  <p className="text-sm text-destructive flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3 shrink-0" />
+                    {saveError}
+                  </p>
+                )}
                 <Button onClick={handleSave} className="w-full" disabled={!form.nom || saving}>
                   {saving ? (
                     <>
