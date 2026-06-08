@@ -99,8 +99,10 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- CONFIG FOR EXISTING USERS
 -- ============================================
 INSERT INTO config_chatbot (user_id, nom_chatbot, message_bienvenue, langue, actif)
-SELECT id, 'Yasmine', 'Bonjour ! Je suis Yasmine, votre assistante virtuelle. Comment puis-je vous aider aujourd''hui ?', 'fr', true
-FROM auth.users
+SELECT p.id, 'Yasmine', 'Bonjour ! Je suis Yasmine, votre assistante virtuelle. Comment puis-je vous aider aujourd''hui ?', 'fr', true
+FROM profiles p
+LEFT JOIN config_chatbot c ON c.user_id = p.id
+WHERE c.id IS NULL
 ON CONFLICT (user_id) DO NOTHING;
 `
 
