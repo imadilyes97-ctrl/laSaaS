@@ -35,6 +35,10 @@ npm_out.txt
 # supabase temp files
 supabase/.temp/
 
+# temp output files
+tsc_err.txt
+tsc_out.txt
+
 # env files (can opt-in for committing if needed)
 .env*
 
