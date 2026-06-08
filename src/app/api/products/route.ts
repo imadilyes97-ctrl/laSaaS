@@ -1,41 +1,48 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@supabase/supabase-js"
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const token = searchParams.get("token")
 
-    if (!token || token !== process.env.SECRET_TOKEN) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
+    if (!token) {
+      return NextResponse.json({ error: "Token manquant" }, { status: 401 })
     }
 
-    const supabase = await createClient()
+    const { data: config, error: configError } = await supabase
+      .from("config_chatbot")
+      .select("user_id, nom_chatbot, message_bienvenue, langue")
+      .eq("secret_token", token)
+      .eq("actif", true)
+      .single()
+
+    if (configError || !config) {
+      return NextResponse.json({ error: "Token invalide" }, { status: 401 })
+    }
 
     const { data: produits } = await supabase
       .from("produits")
       .select("id, nom, description, photo_url, prix, devise, tailles, couleurs, stock")
+      .eq("user_id", config.user_id)
       .eq("actif", true)
       .gt("stock", 0)
       .order("nom")
 
-    const { data: chatbot } = await supabase
-      .from("config_chatbot")
-      .select("nom_chatbot, message_bienvenue, langue")
-      .eq("actif", true)
-      .single()
-
     return NextResponse.json({
       produits: produits || [],
-      config: chatbot || null,
+      config: {
+        nom_chatbot: config.nom_chatbot,
+        message_bienvenue: config.message_bienvenue,
+        langue: config.langue,
+      },
     })
   } catch {
-    return NextResponse.json(
-      { error: "Erreur serveur" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 })
   }
 }

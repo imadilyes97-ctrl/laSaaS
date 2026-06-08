@@ -1,38 +1,37 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@supabase/supabase-js"
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
     const token = body.token
 
-    if (!token || token !== process.env.SECRET_TOKEN) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
+    if (!token) {
+      return NextResponse.json({ error: "Token manquant" }, { status: 401 })
+    }
+
+    const { data: config, error: configError } = await supabase
+      .from("config_chatbot")
+      .select("user_id")
+      .eq("secret_token", token)
+      .eq("actif", true)
+      .single()
+
+    if (configError || !config) {
+      return NextResponse.json({ error: "Token invalide" }, { status: 401 })
     }
 
     const { token: _t, ...orderData } = body
 
-    const supabase = await createClient()
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id")
-      .single()
-
-    if (!profile) {
-      return NextResponse.json(
-        { error: "Aucun profil trouvé" },
-        { status: 500 }
-      )
-    }
-
     const { error: orderError } = await supabase
       .from("commandes")
       .insert({
-        user_id: profile.id,
+        user_id: config.user_id,
         nom_client: orderData.nom_client || orderData.nom || "",
         telephone: orderData.telephone || orderData.tel || "",
         wilaya: orderData.wilaya || "",
@@ -59,7 +58,7 @@ export async function POST(request: Request) {
 
     for (const name of productNames) {
       await supabase.rpc("decrement_stock", {
-        p_user_id: profile.id,
+        p_user_id: config.user_id,
         p_product_name: name,
       })
     }
