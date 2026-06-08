@@ -3,7 +3,9 @@ import { createClient } from "@supabase/supabase-js"
 import { Pool } from "pg"
 
 const SQL = `
--- Produits
+-- ============================================
+-- PRODUITS
+-- ============================================
 CREATE TABLE IF NOT EXISTS produits (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
@@ -21,45 +23,70 @@ CREATE TABLE IF NOT EXISTS produits (
 
 ALTER TABLE produits ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view own produits" ON produits FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can insert own produits" ON produits FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update own produits" ON produits FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Users can delete own produits" ON produits FOR DELETE USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can view own produits" ON produits;
+DROP POLICY IF EXISTS "Users can insert own produits" ON produits;
+DROP POLICY IF EXISTS "Users can update own produits" ON produits;
+DROP POLICY IF EXISTS "Users can delete own produits" ON produits;
+
+CREATE POLICY "produits_select" ON produits FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "produits_insert" ON produits FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "produits_update" ON produits FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "produits_delete" ON produits FOR DELETE USING (auth.uid() = user_id);
 
 CREATE INDEX IF NOT EXISTS idx_produits_user_id ON produits(user_id);
 CREATE INDEX IF NOT EXISTS idx_produits_actif ON produits(actif);
 
 ALTER PUBLICATION supabase_realtime ADD TABLE produits;
 
--- Config chatbot
+-- ============================================
+-- CONFIG CHATBOT
+-- ============================================
 CREATE TABLE IF NOT EXISTS config_chatbot (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
   nom_chatbot TEXT DEFAULT 'Yasmine',
   message_bienvenue TEXT DEFAULT 'Bonjour ! Comment puis-je vous aider ?',
   langue TEXT DEFAULT 'fr',
   photo_profil_url TEXT,
   actif BOOLEAN DEFAULT true,
   secret_token TEXT DEFAULT encode(gen_random_bytes(32), 'hex'),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(user_id)
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 ALTER TABLE config_chatbot ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view own config" ON config_chatbot FOR SELECT TO authenticated USING (auth.uid() = user_id);
-CREATE POLICY "Users can update own config" ON config_chatbot FOR UPDATE TO authenticated USING (auth.uid() = user_id);
-CREATE POLICY "Users can insert own config" ON config_chatbot FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can view own config" ON config_chatbot;
+DROP POLICY IF EXISTS "Users can update own config" ON config_chatbot;
+DROP POLICY IF EXISTS "Users can insert own config" ON config_chatbot;
+
+CREATE POLICY "config_select" ON config_chatbot FOR SELECT TO authenticated USING (auth.uid() = user_id);
+CREATE POLICY "config_insert" ON config_chatbot FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "config_update" ON config_chatbot FOR UPDATE TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
 CREATE INDEX IF NOT EXISTS idx_config_chatbot_user_id ON config_chatbot(user_id);
 ALTER PUBLICATION supabase_realtime ADD TABLE config_chatbot;
 
--- Storage policies
-CREATE POLICY "Public Access" ON storage.objects FOR SELECT USING (bucket_id = 'produits');
-CREATE POLICY "Authenticated Upload" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'produits');
-CREATE POLICY "Authenticated Delete" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'produits');
+-- ============================================
+-- STORAGE POLICIES
+-- ============================================
+DROP POLICY IF EXISTS "Public Access" ON storage.objects;
+DROP POLICY IF EXISTS "Public read access" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated Upload" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can upload" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated Delete" ON storage.objects;
+DROP POLICY IF EXISTS "Users can update own objects" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete own objects" ON storage.objects;
 
--- Decrement stock function
+CREATE POLICY "storage_public_select" ON storage.objects FOR SELECT USING (bucket_id = 'produits');
+CREATE POLICY "storage_auth_insert" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'produits' AND auth.role() = 'authenticated');
+CREATE POLICY "storage_auth_update" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'produits' AND auth.role() = 'authenticated');
+CREATE POLICY "storage_auth_delete" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'produits' AND auth.role() = 'authenticated');
+
+UPDATE storage.buckets SET public = true WHERE id = 'produits';
+
+-- ============================================
+-- DECREMENT STOCK FUNCTION
+-- ============================================
 CREATE OR REPLACE FUNCTION decrement_stock(p_user_id UUID, p_product_name TEXT)
 RETURNS void AS $$
 BEGIN
@@ -68,13 +95,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Config for existing users
-INSERT INTO public.config_chatbot (user_id, nom_chatbot, message_bienvenue, langue)
-SELECT p.id, 'Yasmine', 'Bonjour ! Je suis Yasmine, votre assistante virtuelle. Comment puis-je vous aider aujourd''hui ?', 'fr'
-FROM public.profiles p
-LEFT JOIN public.config_chatbot c ON c.user_id = p.id
-WHERE c.id IS NULL
-ON CONFLICT DO NOTHING;
+-- ============================================
+-- CONFIG FOR EXISTING USERS
+-- ============================================
+INSERT INTO config_chatbot (user_id, nom_chatbot, message_bienvenue, langue, actif)
+SELECT id, 'Yasmine', 'Bonjour ! Je suis Yasmine, votre assistante virtuelle. Comment puis-je vous aider aujourd''hui ?', 'fr', true
+FROM auth.users
+ON CONFLICT (user_id) DO NOTHING;
 `
 
 export async function POST() {

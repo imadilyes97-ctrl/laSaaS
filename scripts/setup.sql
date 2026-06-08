@@ -105,25 +105,25 @@ ALTER PUBLICATION supabase_realtime ADD TABLE config_chatbot;
 -- ============================================
 -- RLS POLICIES
 -- ============================================
-CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
-CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
-CREATE POLICY "Users can insert own profile" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
+CREATE POLICY "profiles_select" ON profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "profiles_update" ON profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "profiles_insert" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
 
-CREATE POLICY "Users can view own commandes" ON commandes FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can insert own commandes" ON commandes FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update own commandes" ON commandes FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "commandes_select" ON commandes FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "commandes_insert" ON commandes FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "commandes_update" ON commandes FOR UPDATE USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can view own conversations" ON conversations FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can insert own conversations" ON conversations FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "conversations_select" ON conversations FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "conversations_insert" ON conversations FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Users can view own produits" ON produits FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can insert own produits" ON produits FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update own produits" ON produits FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Users can delete own produits" ON produits FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "produits_select" ON produits FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "produits_insert" ON produits FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "produits_update" ON produits FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "produits_delete" ON produits FOR DELETE USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can view own config" ON config_chatbot FOR SELECT TO authenticated USING (auth.uid() = user_id);
-CREATE POLICY "Users can update own config" ON config_chatbot FOR UPDATE TO authenticated USING (auth.uid() = user_id);
-CREATE POLICY "Users can insert own config" ON config_chatbot FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "config_select" ON config_chatbot FOR SELECT TO authenticated USING (auth.uid() = user_id);
+CREATE POLICY "config_insert" ON config_chatbot FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "config_update" ON config_chatbot FOR UPDATE TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
 -- ============================================
 -- FONCTIONS
@@ -148,8 +148,9 @@ CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
   INSERT INTO public.profiles (id, secret_token) VALUES (NEW.id, gen_random_uuid());
-  INSERT INTO public.config_chatbot (user_id, nom_chatbot, message_bienvenue, langue)
-  VALUES (NEW.id, 'Yasmine', 'Bonjour ! Je suis Yasmine, votre assistante virtuelle. Comment puis-je vous aider aujourd''hui ?', 'fr');
+  INSERT INTO public.config_chatbot (user_id, nom_chatbot, message_bienvenue, langue, actif)
+  VALUES (NEW.id, 'Yasmine', 'Bonjour ! Je suis Yasmine, votre assistante virtuelle. Comment puis-je vous aider aujourd''hui ?', 'fr', true)
+  ON CONFLICT (user_id) DO NOTHING;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -158,6 +159,12 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE OR REPLACE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 
+-- Créer config pour utilisateurs existants qui n'en ont pas
+INSERT INTO config_chatbot (user_id, nom_chatbot, message_bienvenue, langue, actif)
+SELECT id, 'Yasmine', 'Bonjour ! Je suis Yasmine, votre assistante virtuelle. Comment puis-je vous aider aujourd''hui ?', 'fr', true
+FROM auth.users
+ON CONFLICT (user_id) DO NOTHING;
+
 -- ============================================
 -- STORAGE BUCKET
 -- ============================================
@@ -165,6 +172,23 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('produits', 'produits', true)
 ON CONFLICT (id) DO NOTHING;
 
-CREATE POLICY "Public Access" ON storage.objects FOR SELECT USING (bucket_id = 'produits');
-CREATE POLICY "Authenticated Upload" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'produits');
-CREATE POLICY "Authenticated Delete" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'produits');
+-- S'assurer que le bucket est public
+UPDATE storage.buckets SET public = true WHERE id = 'produits';
+
+-- Supprimer anciennes politiques storage pour éviter les conflits
+DROP POLICY IF EXISTS "Public Access" ON storage.objects;
+DROP POLICY IF EXISTS "Public read access" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated Upload" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can upload" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated Delete" ON storage.objects;
+DROP POLICY IF EXISTS "Users can update own objects" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete own objects" ON storage.objects;
+
+-- Lecture publique
+CREATE POLICY "storage_public_select" ON storage.objects FOR SELECT USING (bucket_id = 'produits');
+-- Upload authentifié
+CREATE POLICY "storage_auth_insert" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'produits' AND auth.role() = 'authenticated');
+-- Update authentifié
+CREATE POLICY "storage_auth_update" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'produits' AND auth.role() = 'authenticated');
+-- Delete authentifié
+CREATE POLICY "storage_auth_delete" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'produits' AND auth.role() = 'authenticated');
