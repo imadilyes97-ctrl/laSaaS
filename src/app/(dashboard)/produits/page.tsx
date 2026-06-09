@@ -529,7 +529,7 @@ export default function ProduitsPage() {
                         Stock: {p.stock}
                       </Badge>
                     ) : (
-                      <Badge className="bg-green-600 hover:bg-green-700">En stock: {p.stock}</Badge>
+                      <Badge className="bg-cyber-cyan/20 text-cyber-cyan border-cyber-cyanDim">En stock: {p.stock}</Badge>
                     )}
                   </div>
                 </div>

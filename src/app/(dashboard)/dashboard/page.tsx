@@ -213,7 +213,7 @@ export default function DashboardPage() {
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{todayOrders.length}</div>
+            <div className="text-2xl font-bold text-cyber-cyan">{todayOrders.length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -224,7 +224,7 @@ export default function DashboardPage() {
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-cyber-cyan">
               {todayConversations.length}
             </div>
           </CardContent>
@@ -237,7 +237,7 @@ export default function DashboardPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{todayRevenue.toLocaleString()} DA</div>
+            <div className="text-2xl font-bold text-cyber-cyan">{todayRevenue.toLocaleString()} DA</div>
           </CardContent>
         </Card>
         <Card>
@@ -246,7 +246,7 @@ export default function DashboardPage() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{conversionRate}%</div>
+            <div className="text-2xl font-bold text-cyber-cyan">{conversionRate}%</div>
           </CardContent>
         </Card>
       </div>
@@ -260,7 +260,7 @@ export default function DashboardPage() {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold">
+            <div className="text-lg font-bold text-cyber-cyan">
               {topProduct ? `${topProduct[0]} (${topProduct[1]})` : "N/A"}
             </div>
           </CardContent>
@@ -273,7 +273,7 @@ export default function DashboardPage() {
             <MapPin className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold">
+            <div className="text-lg font-bold text-cyber-cyan">
               {topWilaya ? `${topWilaya[0]} (${topWilaya[1]})` : "N/A"}
             </div>
           </CardContent>
@@ -286,7 +286,7 @@ export default function DashboardPage() {
             <Palette className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold">
+            <div className="text-lg font-bold text-cyber-cyan">
               {topCouleur ? `${topCouleur[0]} (${topCouleur[1]})` : "N/A"}
             </div>
           </CardContent>
@@ -299,7 +299,7 @@ export default function DashboardPage() {
             <Ruler className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold">
+            <div className="text-lg font-bold text-cyber-cyan">
               {topTaille ? `${topTaille[0]} (${topTaille[1]})` : "N/A"}
             </div>
           </CardContent>

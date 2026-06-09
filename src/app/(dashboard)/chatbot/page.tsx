@@ -383,7 +383,7 @@ export default function ChatbotPage() {
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.messagesToday}</div>
+            <div className="text-2xl font-bold text-cyber-cyan">{stats.messagesToday}</div>
           </CardContent>
         </Card>
         <Card>
@@ -392,7 +392,7 @@ export default function ChatbotPage() {
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.ordersToday}</div>
+            <div className="text-2xl font-bold text-cyber-cyan">{stats.ordersToday}</div>
           </CardContent>
         </Card>
       </div>
@@ -572,7 +572,7 @@ export default function ChatbotPage() {
                   <RefreshCw className="h-4 w-4" />
                 </Button>
               </div>
-              {copied && <p className="text-xs text-green-600">Copié !</p>}
+              {copied && <p className="text-xs text-cyber-cyan">Copié !</p>}
             </div>
 
             <div className="rounded-lg bg-muted p-4 space-y-2">

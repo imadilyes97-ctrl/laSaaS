@@ -156,7 +156,7 @@ export default function AnalytiquesPage() {
             <CardTitle className="text-sm font-medium">Chiffre d'affaires</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalRevenue.toLocaleString()} DA</div>
+            <div className="text-2xl font-bold text-cyber-cyan">{totalRevenue.toLocaleString()} DA</div>
             <p className="text-xs text-muted-foreground">Période sélectionnée</p>
           </CardContent>
         </Card>
@@ -165,7 +165,7 @@ export default function AnalytiquesPage() {
             <CardTitle className="text-sm font-medium">Commandes confirmées</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalOrders}</div>
+            <div className="text-2xl font-bold text-cyber-cyan">{totalOrders}</div>
           </CardContent>
         </Card>
         <Card>
@@ -173,7 +173,7 @@ export default function AnalytiquesPage() {
             <CardTitle className="text-sm font-medium">Conversations</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalConversations}</div>
+            <div className="text-2xl font-bold text-cyber-cyan">{totalConversations}</div>
           </CardContent>
         </Card>
         <Card>
@@ -181,7 +181,7 @@ export default function AnalytiquesPage() {
             <CardTitle className="text-sm font-medium">Taux de conversion</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{conversionRate}%</div>
+            <div className="text-2xl font-bold text-cyber-cyan">{conversionRate}%</div>
             <p className="text-xs text-muted-foreground">Convers → Commandes</p>
           </CardContent>
         </Card>

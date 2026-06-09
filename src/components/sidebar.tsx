@@ -31,7 +31,7 @@ const navItems = [
   { href: "/conversations", label: "Conversations", icon: MessageSquare },
   { href: "/analytiques", label: "Analytiques", icon: BarChart3 },
   { href: "/chatbot", label: "Chatbot", icon: Bot },
-  { href: "/settings", label: "Paramètres", icon: Settings },
+  { href: "/settings", label: "Param\u00e8tres", icon: Settings },
   { href: "/profile", label: "Profil", icon: User },
 ]
 
@@ -76,19 +76,19 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="w-64 border-r bg-card flex flex-col">
+    <aside className="w-64 border-r border-cyber-border bg-cyber-bgSecond flex flex-col">
       <div className="p-6">
         <div className="flex items-center gap-2 mb-1">
-          <h1 className="text-xl font-bold">YasmineStack</h1>
+          <h1 className="text-xl font-bold text-cyber-cyan">YasmineStack</h1>
           {chatbotActif !== null && (
             chatbotActif ? (
-              <CheckCircle2 className="h-4 w-4 text-green-500" />
+              <CheckCircle2 className="h-4 w-4 text-cyber-cyan" />
             ) : (
-              <XCircle className="h-4 w-4 text-red-500" />
+              <XCircle className="h-4 w-4 text-cyber-red" />
             )
           )}
         </div>
-        <p className="text-sm text-muted-foreground">Dashboard</p>
+        <p className="text-sm text-cyber-textSecondary">Dashboard</p>
       </div>
       <Separator />
       <nav className="flex-1 p-4 space-y-1">
@@ -98,8 +98,8 @@ export function Sidebar() {
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 pathname === item.href
-                  ? "bg-primary text-primary-foreground"
-                  : "hover:bg-accent hover:text-accent-foreground"
+                  ? "bg-cyber-cyanGlow text-cyber-cyan border-l-2 border-cyber-cyan"
+                  : "text-cyber-textSecondary hover:text-cyber-cyan hover:bg-cyber-bgHover"
               )}
             >
               <item.icon className="h-4 w-4" />
@@ -112,7 +112,7 @@ export function Sidebar() {
       <div className="p-4 space-y-2">
         <Button
           variant="ghost"
-          className="w-full justify-start"
+          className="w-full justify-start text-cyber-textSecondary hover:text-cyber-cyan"
           onClick={toggleDark}
         >
           {dark ? (
@@ -124,11 +124,11 @@ export function Sidebar() {
         </Button>
         <Button
           variant="ghost"
-          className="w-full justify-start"
+          className="w-full justify-start text-cyber-textSecondary hover:text-cyber-cyan"
           onClick={handleSignOut}
         >
           <LogOut className="h-4 w-4 mr-2" />
-          Déconnexion
+          D\u00e9connexion
         </Button>
       </div>
     </aside>
