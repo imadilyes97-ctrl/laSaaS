@@ -29,28 +29,28 @@ export default function HeroSection() {
   const avantages = [
     {
       icon: Clock,
-      title: 'Disponibilit\u00e9 24/7',
-      desc: 'Ton chatbot r\u00e9pond aux clients \u00e0 toute heure, sans pause. Plus de ventes manqu\u00e9es m\u00eame la nuit ou le weekend.',
+      title: 'Disponibilité 24/7',
+      desc: 'Ton chatbot répond aux clients à toute heure, sans pause. Plus de ventes manquées même la nuit ou le weekend.',
     },
     {
       icon: Bot,
       title: 'Automatisation des commandes',
-      desc: 'Yasmine prend les commandes automatiquement, collecte nom, t\u00e9l\u00e9phone, wilaya et commune sans intervention humaine.',
+      desc: 'Yasmine prend les commandes automatiquement, collecte nom, téléphone, wilaya et commune sans intervention humaine.',
     },
     {
       icon: LayoutDashboard,
-      title: 'Gestion centralis\u00e9e',
+      title: 'Gestion centralisée',
       desc: 'Suis ton stock, tes produits et toutes tes conversations depuis un seul dashboard simple et efficace.',
     },
     {
       icon: Sliders,
       title: 'Personnalisation facile',
-      desc: 'Configure ton chatbot, ajoute tes produits et personnalise tes r\u00e9ponses sans aucune comp\u00e9tence technique.',
+      desc: 'Configure ton chatbot, ajoute tes produits et personnalise tes réponses sans aucune compétence technique.',
     },
     {
       icon: Zap,
       title: 'Gain de temps',
-      desc: 'R\u00e9duis les t\u00e2ches r\u00e9p\u00e9titives et concentre-toi sur la croissance de ta boutique.',
+      desc: 'Réduis les tâches répétitives et concentre-toi sur la croissance de ta boutique.',
     },
   ]
 
@@ -195,7 +195,7 @@ export default function HeroSection() {
           </h1>
 
           <p className="mt-6 sm:mt-8 text-cyber-textSecondary text-sm sm:text-base md:text-lg leading-relaxed max-w-md px-2">
-            R\u00e9pond aux clients 24h/24, prend les commandes automatiquement et g\u00e8re ton stock depuis un seul dashboard.
+            Répond aux clients 24h/24, prend les commandes automatiquement et gère ton stock depuis un seul dashboard.
           </p>
         </div>
 
@@ -207,7 +207,7 @@ export default function HeroSection() {
             </span>
           </div>
           <p className="text-cyber-textSecondary text-xs leading-relaxed mb-6 max-w-xs font-medium">
-            Connecte ton chatbot Yasmine \u00e0 ta page Facebook, g\u00e8re tes produits et suis tes commandes en temps r\u00e9el depuis un seul endroit.
+            Connecte ton chatbot Yasmine à ta page Facebook, gère tes produits et suis tes commandes en temps réel depuis un seul endroit.
           </p>
           <div className="flex items-center gap-4 flex-wrap">
             <a
@@ -217,7 +217,7 @@ export default function HeroSection() {
               Commencer Maintenant
             </a>
             <button className="text-cyber-cyan text-sm font-semibold sm:font-medium border border-cyber-cyan/40 hover:border-cyber-cyan px-5 sm:px-6 py-2.5 sm:py-3 rounded-full transition-colors cursor-pointer">
-              Voir la d\u00e9mo
+              Voir la démo
             </button>
           </div>
         </div>
@@ -237,7 +237,7 @@ export default function HeroSection() {
             Pourquoi choisir LinkFlow ?
           </h2>
           <p className="text-center text-cyber-textSecondary text-sm sm:text-base mb-12 sm:mb-16 max-w-lg mx-auto">
-            Tout ce dont tu as besoin pour g\u00e9rer ta boutique connect\u00e9e.
+            Tout ce dont tu as besoin pour gérer ta boutique connectée.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {avantages.map((item, i) => (
@@ -259,10 +259,10 @@ export default function HeroSection() {
       <section id="comment" className="relative w-full py-20 sm:py-28 px-4 sm:px-6 bg-cyber-bgSecond">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-center text-white text-3xl sm:text-4xl md:text-5xl font-semibold mb-4">
-            Comment \u00e7a marche ?
+            Comment ça marche ?
           </h2>
           <p className="text-center text-cyber-textSecondary text-sm sm:text-base mb-16 sm:mb-20 max-w-lg mx-auto">
-            Trois \u00e9tapes simples pour lancer ta boutique connect\u00e9e.
+            Trois étapes simples pour lancer ta boutique connectée.
           </p>
 
           <div className="relative">
@@ -272,18 +272,18 @@ export default function HeroSection() {
               {[
                 {
                   num: '01',
-                  title: 'Cr\u00e9e ton compte',
+                  title: 'Crée ton compte',
                   desc: 'Inscris-toi sur la plateforme, configure le nom de ton chatbot et connecte ta page Facebook Messenger en quelques minutes.',
                 },
                 {
                   num: '02',
                   title: 'Ajoute tes produits',
-                  desc: 'Depuis le dashboard, ajoute tes produits avec photos, prix, tailles et couleurs. Yasmine les conna\u00eet instantan\u00e9ment.',
+                  desc: 'Depuis le dashboard, ajoute tes produits avec photos, prix, tailles et couleurs. Yasmine les connaît instantanément.',
                 },
                 {
                   num: '03',
-                  title: 'Re\u00e7ois tes commandes',
-                  desc: 'Tes clients chattent avec Yasmine sur Messenger, elle prend leurs commandes et tu les retrouves dans ton dashboard en temps r\u00e9el.',
+                  title: 'Reçois tes commandes',
+                  desc: 'Tes clients chattent avec Yasmine sur Messenger, elle prend leurs commandes et tu les retrouves dans ton dashboard en temps réel.',
                 },
               ].map((step, i) => (
                 <div key={i} className="relative flex flex-col items-center text-center">
