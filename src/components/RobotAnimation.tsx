@@ -17,21 +17,28 @@ export default function RobotAnimation({ className }: { className?: string }) {
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const ctx = canvas.getContext('2d')
+    const ctx = canvas.getContext('2d', { alpha: false })
     if (!ctx) return
+
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
 
     const imgs: HTMLImageElement[] = []
     let loaded = 0
     let started = false
 
-    const resize = () => {
+    const handleResize = () => {
       if (!canvas) return
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
+      const dpr = window.devicePixelRatio || 1
+      canvas.width = window.innerWidth * dpr
+      canvas.height = window.innerHeight * dpr
+      canvas.style.width = '100%'
+      canvas.style.height = '100%'
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     }
 
-    resize()
-    window.addEventListener('resize', resize)
+    handleResize()
+    window.addEventListener('resize', handleResize)
 
     const startAnimation = () => {
       let index = 0
@@ -44,8 +51,9 @@ export default function RobotAnimation({ className }: { className?: string }) {
           last = now
           const img = imgs[index]
           if (img?.complete) {
-            const cw = canvas.width
-            const ch = canvas.height
+            const dpr = window.devicePixelRatio || 1
+            const cw = canvas.width / dpr
+            const ch = canvas.height / dpr
 
             const iw = img.naturalWidth
             const ih = img.naturalHeight
@@ -60,12 +68,19 @@ export default function RobotAnimation({ className }: { className?: string }) {
               sx = (iw - sw) / 2
             } else {
               sh = iw / canvasRatio
-              sy = (ih - sh) / 2
+              sy = 0
             }
 
-            ctx.clearRect(0, 0, cw, ch)
-            ctx.fillStyle = '#050d1a'
-            ctx.fillRect(0, 0, cw, ch)
+            if (window.innerWidth >= 1024) {
+              const zoomOut = 0.85
+              const newSw = sw / zoomOut
+              const newSh = sh / zoomOut
+              sx = Math.max(0, (iw - newSw) / 2)
+              sy = Math.max(0, (ih - newSh) / 8)
+              sw = Math.min(newSw, iw - sx)
+              sh = Math.min(newSh, ih - sy)
+            }
+
             ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch)
           }
 
@@ -81,6 +96,7 @@ export default function RobotAnimation({ className }: { className?: string }) {
 
     frames.forEach((src) => {
       const img = new Image()
+      img.decoding = 'sync'
       img.src = src
       img.onload = img.onerror = () => {
         loaded++
@@ -94,7 +110,7 @@ export default function RobotAnimation({ className }: { className?: string }) {
 
     return () => {
       cancelAnimationFrame(rafRef.current)
-      window.removeEventListener('resize', resize)
+      window.removeEventListener('resize', handleResize)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
