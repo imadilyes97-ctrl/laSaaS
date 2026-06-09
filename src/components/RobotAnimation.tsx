@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const TOTAL_FRAMES = 91
 const FPS = 30
@@ -13,6 +13,14 @@ const frames = Array.from({ length: TOTAL_FRAMES }, (_, i) => {
 export default function RobotAnimation({ className }: { className?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rafRef = useRef(0)
+  const [isDesktop, setIsDesktop] = useState(false)
+
+  useEffect(() => {
+    const check = () => setIsDesktop(window.innerWidth >= 1024)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -47,11 +55,15 @@ export default function RobotAnimation({ className }: { className?: string }) {
             }
 
             ctx.clearRect(0, 0, w, h)
+            ctx.fillStyle = '#050d1a'
+            ctx.fillRect(0, 0, w, h)
+
             const iw = img.naturalWidth
             const ih = img.naturalHeight
-            const scale = Math.max(w / iw, h / ih)
-            const dw = iw * scale
-            const dh = ih * scale
+            const desk = window.innerWidth >= 1024
+            const s = desk ? Math.min(w / iw, h / ih) * 0.85 : Math.max(w / iw, h / ih)
+            const dw = iw * s
+            const dh = ih * s
             ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh)
           }
 
@@ -79,11 +91,22 @@ export default function RobotAnimation({ className }: { className?: string }) {
     })
 
     return () => cancelAnimationFrame(rafRef.current)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (
     <div className={className ?? 'absolute inset-0 w-full h-full'}>
-      <canvas ref={canvasRef} className="w-full h-full" />
+      <canvas
+        ref={canvasRef}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: isDesktop ? 'contain' : 'cover',
+          objectPosition: 'center center',
+          transform: isDesktop ? 'scale(0.85)' : 'scale(1)',
+          transformOrigin: 'center center',
+        }}
+      />
     </div>
   )
 }

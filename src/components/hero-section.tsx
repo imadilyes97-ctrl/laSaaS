@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { LogIn, UserPlus, Sparkles, Play, Menu, X, Clock, Bot, LayoutDashboard, Sliders, Zap } from 'lucide-react'
+import { LogIn, Sparkles, Play, Menu, X, Clock, Bot, LayoutDashboard, Sliders, Zap } from 'lucide-react'
 import RobotAnimation from './RobotAnimation'
+
+const LOGIN_URL = 'https://imadilyes97-ctrl-lasaas.vercel.app/auth/login'
 
 export default function HeroSection() {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -28,37 +30,36 @@ export default function HeroSection() {
     {
       icon: Clock,
       title: 'Disponibilit\u00e9 24/7',
-      desc: 'Ton chatbot r\u00e9pond aux clients \u00e0 toute heure, sans pause, ce qui augmente les ventes et la satisfaction.',
+      desc: 'Ton chatbot r\u00e9pond aux clients \u00e0 toute heure, sans pause. Plus de ventes manqu\u00e9es m\u00eame la nuit ou le weekend.',
     },
     {
       icon: Bot,
       title: 'Automatisation des commandes',
-      desc: 'Prend les commandes automatiquement, collecte les informations clients et r\u00e9duit les erreurs humaines.',
+      desc: 'Yasmine prend les commandes automatiquement, collecte nom, t\u00e9l\u00e9phone, wilaya et commune sans intervention humaine.',
     },
     {
       icon: LayoutDashboard,
       title: 'Gestion centralis\u00e9e',
-      desc: 'Le dashboard permet de suivre le stock, les produits et les conversations en un seul endroit, simple et efficace.',
+      desc: 'Suis ton stock, tes produits et toutes tes conversations depuis un seul dashboard simple et efficace.',
     },
     {
       icon: Sliders,
       title: 'Personnalisation facile',
-      desc: 'Chaque client peut configurer son chatbot et ses produits selon ses besoins, sans comp\u00e9tences techniques.',
+      desc: 'Configure ton chatbot, ajoute tes produits et personnalise tes r\u00e9ponses sans aucune comp\u00e9tence technique.',
     },
     {
       icon: Zap,
       title: 'Gain de temps',
-      desc: 'Tu r\u00e9duis les t\u00e2ches r\u00e9p\u00e9titives et lib\u00e8res du temps pour te concentrer sur la strat\u00e9gie et la croissance.',
+      desc: 'R\u00e9duis les t\u00e2ches r\u00e9p\u00e9titives et concentre-toi sur la croissance de ta boutique.',
     },
   ]
 
   return (
     <>
       <section className="relative w-full min-h-screen sm:h-screen overflow-hidden bg-cyber-bg">
-        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 0%, #0a1f3a 0%, #050d1a 70%)' }} />
         <RobotAnimation className="absolute inset-0 w-full h-full" />
 
-        <div className="absolute inset-0 pointer-events-none z-[1]" style={{ background: 'linear-gradient(to top, #050d1a 0%, transparent 40%), linear-gradient(to right, #050d1a 20%, transparent 60%)' }} />
+        <div className="absolute inset-0 pointer-events-none z-[1]" style={{ background: 'linear-gradient(to top, rgba(5,13,26,0.7) 0%, transparent 30%), linear-gradient(to right, rgba(5,13,26,0.6) 0%, transparent 40%)' }} />
 
         <nav className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-4 sm:px-6 md:px-10 py-4 sm:py-6">
           <div className="flex items-center gap-2 text-cyber-cyan">
@@ -89,14 +90,7 @@ export default function HeroSection() {
 
           <div className="flex items-center gap-3 sm:gap-6 text-cyber-textSecondary">
             <a
-              href="#signup"
-              className="hidden sm:flex items-center gap-2 text-sm font-medium hover:text-cyber-cyan transition-colors"
-            >
-              <UserPlus className="w-4 h-4" />
-              Cr\u00e9er un compte
-            </a>
-            <a
-              href="#login"
+              href={LOGIN_URL}
               className="hidden sm:flex items-center gap-2 text-sm font-medium hover:text-cyber-cyan transition-colors"
             >
               <LogIn className="w-4 h-4" />
@@ -171,15 +165,8 @@ export default function HeroSection() {
               style={{ transitionDelay: menuOpen ? '400ms' : '0ms' }}
             >
               <a
-                href="#signup"
-                className="flex items-center gap-2 text-sm font-medium text-cyber-textSecondary hover:text-cyber-cyan transition-colors sm:hidden"
-              >
-                <UserPlus className="w-4 h-4" />
-                Cr\u00e9er un compte
-              </a>
-              <a
-                href="#login"
-                className="flex items-center gap-2 text-sm font-medium text-cyber-textSecondary hover:text-cyber-cyan transition-colors sm:hidden"
+                href={LOGIN_URL}
+                className="flex items-center gap-2 text-sm font-medium text-cyber-textSecondary hover:text-cyber-cyan transition-colors"
               >
                 <LogIn className="w-4 h-4" />
                 Se connecter
@@ -223,9 +210,12 @@ export default function HeroSection() {
             Connecte ton chatbot Yasmine \u00e0 ta page Facebook, g\u00e8re tes produits et suis tes commandes en temps r\u00e9el depuis un seul endroit.
           </p>
           <div className="flex items-center gap-4 flex-wrap">
-            <button className="bg-cyber-cyan hover:bg-cyber-blue text-cyber-bg text-sm font-bold px-5 sm:px-6 py-2.5 sm:py-3 rounded-full transition-colors shadow-sm cursor-pointer btn-cyber">
+            <a
+              href={LOGIN_URL}
+              className="inline-block bg-cyber-cyan hover:bg-cyber-blue text-cyber-bg text-sm font-bold px-5 sm:px-6 py-2.5 sm:py-3 rounded-full transition-colors shadow-sm btn-cyber"
+            >
               Commencer Maintenant
-            </button>
+            </a>
             <button className="text-cyber-cyan text-sm font-semibold sm:font-medium border border-cyber-cyan/40 hover:border-cyber-cyan px-5 sm:px-6 py-2.5 sm:py-3 rounded-full transition-colors cursor-pointer">
               Voir la d\u00e9mo
             </button>
@@ -253,15 +243,62 @@ export default function HeroSection() {
             {avantages.map((item, i) => (
               <div
                 key={i}
-                className="bg-cyber-bgCard border border-cyber-border rounded-2xl p-6 sm:p-8 shadow-sm hover:border-cyber-cyan/60 hover:shadow-[0_0_20px_#00d4ff20] transition-all duration-300"
+                className="bg-[#0d1f35] border border-[#00d4ff20] rounded-2xl p-6 sm:p-8 shadow-sm hover:border-[#00d4ff60] hover:shadow-[0_0_20px_#00d4ff15] transition-all duration-300"
               >
-                <div className="w-10 h-10 rounded-full bg-cyber-cyan/20 flex items-center justify-center mb-4">
-                  <item.icon className="w-5 h-5 text-cyber-cyan" />
+                <div className="w-10 h-10 rounded-full bg-[#00d4ff15] flex items-center justify-center mb-4">
+                  <item.icon className="w-5 h-5 text-[#00d4ff]" />
                 </div>
                 <h3 className="text-white text-lg font-semibold mb-2">{item.title}</h3>
-                <p className="text-cyber-textSecondary text-sm leading-relaxed">{item.desc}</p>
+                <p className="text-[#8ab4cc] text-sm leading-relaxed">{item.desc}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="comment" className="relative w-full py-20 sm:py-28 px-4 sm:px-6 bg-cyber-bgSecond">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-center text-white text-3xl sm:text-4xl md:text-5xl font-semibold mb-4">
+            Comment \u00e7a marche ?
+          </h2>
+          <p className="text-center text-cyber-textSecondary text-sm sm:text-base mb-16 sm:mb-20 max-w-lg mx-auto">
+            Trois \u00e9tapes simples pour lancer ta boutique connect\u00e9e.
+          </p>
+
+          <div className="relative">
+            <div className="hidden lg:block absolute top-24 left-[calc(16.67%+2rem)] right-[calc(16.67%+2rem)] border-t border-dashed border-[#00d4ff20]" />
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
+              {[
+                {
+                  num: '01',
+                  title: 'Cr\u00e9e ton compte',
+                  desc: 'Inscris-toi sur la plateforme, configure le nom de ton chatbot et connecte ta page Facebook Messenger en quelques minutes.',
+                },
+                {
+                  num: '02',
+                  title: 'Ajoute tes produits',
+                  desc: 'Depuis le dashboard, ajoute tes produits avec photos, prix, tailles et couleurs. Yasmine les conna\u00eet instantan\u00e9ment.',
+                },
+                {
+                  num: '03',
+                  title: 'Re\u00e7ois tes commandes',
+                  desc: 'Tes clients chattent avec Yasmine sur Messenger, elle prend leurs commandes et tu les retrouves dans ton dashboard en temps r\u00e9el.',
+                },
+              ].map((step, i) => (
+                <div key={i} className="relative flex flex-col items-center text-center">
+                  <div className="text-[#00d4ff20] text-8xl font-bold leading-none mb-6">
+                    {step.num}
+                  </div>
+                  <h3 className="text-white font-semibold text-xl mb-3">
+                    {step.title}
+                  </h3>
+                  <p className="text-[#8ab4cc] text-sm leading-relaxed max-w-xs">
+                    {step.desc}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
