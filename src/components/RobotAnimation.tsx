@@ -17,7 +17,10 @@ export default function RobotAnimation({ className }: { className?: string }) {
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const ctx = canvas.getContext('2d', { alpha: false })
+    const ctx = canvas.getContext('2d', {
+      alpha: false,
+      desynchronized: true,
+    })
     if (!ctx) return
 
     ctx.imageSmoothingEnabled = true
@@ -29,14 +32,12 @@ export default function RobotAnimation({ className }: { className?: string }) {
 
     const handleResize = () => {
       if (!canvas) return
-      const dpr = window.devicePixelRatio || 1
-      canvas.width = window.innerWidth * dpr
-      canvas.height = window.innerHeight * dpr
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
       canvas.style.width = '100%'
       canvas.style.height = '100%'
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
     }
-
     handleResize()
     window.addEventListener('resize', handleResize)
 
@@ -51,37 +52,37 @@ export default function RobotAnimation({ className }: { className?: string }) {
           last = now
           const img = imgs[index]
           if (img?.complete) {
-            const dpr = window.devicePixelRatio || 1
-            const cw = canvas.width / dpr
-            const ch = canvas.height / dpr
+            const vw = window.innerWidth
+            const vh = window.innerHeight
 
             const iw = img.naturalWidth
             const ih = img.naturalHeight
 
             const imgRatio = iw / ih
-            const canvasRatio = cw / ch
+            const viewRatio = vw / vh
 
             let sx = 0, sy = 0, sw = iw, sh = ih
 
-            if (imgRatio > canvasRatio) {
-              sw = ih * canvasRatio
+            if (imgRatio > viewRatio) {
+              sw = ih * viewRatio
               sx = (iw - sw) / 2
+              sy = 0
             } else {
-              sh = iw / canvasRatio
+              sh = iw / viewRatio
+              sx = 0
               sy = 0
             }
 
             if (window.innerWidth >= 1024) {
-              const zoomOut = 0.85
-              const newSw = sw / zoomOut
-              const newSh = sh / zoomOut
-              sx = Math.max(0, (iw - newSw) / 2)
-              sy = Math.max(0, (ih - newSh) / 8)
-              sw = Math.min(newSw, iw - sx)
-              sh = Math.min(newSh, ih - sy)
+              const scale = 1.3
+              sw = Math.min(iw, sw * scale)
+              sh = Math.min(ih, sh * scale)
+              sx = Math.max(0, (iw - sw) / 2)
+              sy = 0
             }
 
-            ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch)
+            ctx.clearRect(0, 0, canvas.width, canvas.height)
+            ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height)
           }
 
           index += direction
@@ -102,6 +103,7 @@ export default function RobotAnimation({ className }: { className?: string }) {
         loaded++
         if (loaded === TOTAL_FRAMES && !started) {
           started = true
+          handleResize()
           startAnimation()
         }
       }
