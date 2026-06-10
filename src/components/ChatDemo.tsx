@@ -38,7 +38,9 @@ export default function ChatDemo() {
       setTimeout(() => {
         if (step < demoSteps.length) {
           const next = demoSteps[step]
-          setMessages(prev => [...prev, { role: next.user ? 'user' : 'assistant', content: next[next.user ? 'user' : 'assistant'] }])
+          const role = next.user ? 'user' : 'assistant'
+          const content = next[role] as string
+          setMessages(prev => [...prev, { role, content }])
           setStep(step + 1)
           setIsTyping(false)
         }
