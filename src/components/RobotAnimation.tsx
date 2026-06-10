@@ -70,15 +70,20 @@ export default function RobotAnimation({ className }: { className?: string }) {
 
             let sx = 0, sy = 0, sw = iw, sh = ih
 
-            // Mobile version - keep original behavior
-            if (imgRatio > viewRatio) {
-              sw = ih * viewRatio
-              sx = (iw - sw) / 2
-              sy = 0
-            } else {
-              sh = iw / viewRatio
-              sx = 0
-              sy = 0
+            // Mobile version - center the robot properly with zoom adjustment
+            if (window.innerWidth < 1024) {  // Mobile devices
+              const mobileZoom = 0.9  // Slight zoom out for better mobile fit
+              if (imgRatio > viewRatio) {
+                // Landscape image on portrait screen - crop sides
+                sw = ih * viewRatio * mobileZoom
+                sx = (iw - sw) / 2
+                sy = 0
+              } else {
+                // Portrait image on portrait screen - crop top/bottom and center vertically
+                sh = iw / viewRatio * mobileZoom
+                sx = 0
+                sy = (ih - sh) / 3  // Center more towards top for better composition
+              }
             }
 
             // PC version - face-centered crop with improved zoom

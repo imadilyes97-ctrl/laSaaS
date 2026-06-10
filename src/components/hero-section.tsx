@@ -64,12 +64,12 @@ export default function HeroSection() {
   return (
     <>
       <section className="relative w-full min-h-screen sm:h-screen overflow-hidden bg-cyber-bg">
-        <RobotAnimation className="absolute inset-0 w-full h-full" />
+        <RobotAnimation className="absolute inset-0 w-full h-full z-[0]" />
         <div className="absolute inset-0 pointer-events-none" style={{
           background: 'radial-gradient(circle at 20% 50%, rgba(0, 212, 255, 0.03) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(0, 212, 255, 0.02) 0%, transparent 50%)'
         }} />
 
-        <div className="absolute inset-0 pointer-events-none z-[1]" style={{ background: 'linear-gradient(to top, rgba(5,13,26,0.7) 0%, transparent 30%), linear-gradient(to right, rgba(5,13,26,0.6) 0%, transparent 40%)' }} />
+        <div className="absolute inset-0 pointer-events-none z-[1]" style={{ background: 'linear-gradient(to top, rgba(5,13,26,0.5) 0%, transparent 25%), linear-gradient(to right, rgba(5,13,26,0.4) 0%, transparent 30%)' }} />
 
         <nav className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-4 sm:px-6 md:px-10 py-4 sm:py-6">
           <div className="flex items-center gap-2 text-cyber-cyan">
