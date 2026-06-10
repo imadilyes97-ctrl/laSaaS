@@ -32,11 +32,18 @@ export default function RobotAnimation({ className }: { className?: string }) {
 
     const handleResize = () => {
       if (!canvas) return
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
-      canvas.style.width = '100%'
-      canvas.style.height = '100%'
-      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      const dpr = window.devicePixelRatio || 1
+      const vw = window.innerWidth
+      const vh = window.innerHeight
+
+      // Set canvas size with DPR for sharpness
+      canvas.width = vw * dpr
+      canvas.height = vh * dpr
+      canvas.style.width = `${vw}px`
+      canvas.style.height = `${vh}px`
+
+      // Scale context for DPR
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     }
     handleResize()
     window.addEventListener('resize', handleResize)
@@ -63,6 +70,7 @@ export default function RobotAnimation({ className }: { className?: string }) {
 
             let sx = 0, sy = 0, sw = iw, sh = ih
 
+            // Mobile version - keep original behavior
             if (imgRatio > viewRatio) {
               sw = ih * viewRatio
               sx = (iw - sw) / 2
@@ -73,12 +81,20 @@ export default function RobotAnimation({ className }: { className?: string }) {
               sy = 0
             }
 
+            // PC version - face-centered crop with improved zoom
             if (window.innerWidth >= 1024) {
               const scale = 1.3
-              sw = Math.min(iw, sw * scale)
-              sh = Math.min(ih, sh * scale)
-              sx = Math.max(0, (iw - sw) / 2)
-              sy = 0
+              const centerX = iw / 2
+              const centerY = ih * 0.4 // Center on face (not image center)
+
+              sw = iw / scale
+              sh = ih / scale
+              sx = centerX - (sw / 2)
+              sy = centerY - (sh / 2)
+
+              // Ensure we don't exceed image boundaries
+              sx = Math.max(0, Math.min(sx, iw - sw))
+              sy = Math.max(0, Math.min(sy, ih - sh))
             }
 
             ctx.clearRect(0, 0, canvas.width, canvas.height)
