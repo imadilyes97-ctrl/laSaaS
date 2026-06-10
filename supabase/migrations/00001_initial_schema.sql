@@ -3,6 +3,8 @@ CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   secret_token UUID DEFAULT gen_random_uuid() UNIQUE,
   boutique_name TEXT DEFAULT '',
+  full_name TEXT DEFAULT '',
+  username TEXT DEFAULT '',
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
@@ -100,8 +102,8 @@ CREATE POLICY "Users can insert own conversations"
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, secret_token)
-  VALUES (NEW.id, gen_random_uuid());
+  INSERT INTO public.profiles (id, secret_token, full_name, username)
+  VALUES (NEW.id, gen_random_uuid(), '', '');
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

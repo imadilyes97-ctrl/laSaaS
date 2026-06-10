@@ -47,13 +47,30 @@ export default function RegisterPage() {
     }
 
     if (data.session) {
-      await supabase.from("profiles").update({
-        full_name: fullName,
-        username,
-      }).eq("id", data.user?.id)
+      try {
+        // Check if profile exists, if not insert it
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .upsert({
+            id: data.user?.id,
+            full_name: fullName,
+            username,
+            boutique_name: username, // Also set boutique_name for backward compatibility
+          })
+          .select()
 
-      router.push("/onboarding")
-      router.refresh()
+        if (profileError) {
+          console.error("Profile update error:", profileError.message)
+          // Continue anyway as this is not critical
+        }
+
+        router.push("/onboarding")
+        router.refresh()
+      } catch (error) {
+        console.error("Registration error:", error)
+        setError("Une erreur est survenue. Veuillez réessayer.")
+        setLoading(false)
+      }
     } else {
       setMessage("Compte créé ! Vérifie ta boîte email pour confirmer l'inscription.")
       setLoading(false)

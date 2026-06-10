@@ -147,7 +147,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, secret_token) VALUES (NEW.id, gen_random_uuid());
+  INSERT INTO public.profiles (id, secret_token, full_name, username) VALUES (NEW.id, gen_random_uuid(), '', '');
   INSERT INTO public.config_chatbot (user_id, nom_chatbot, message_bienvenue, langue, actif)
   VALUES (NEW.id, 'Yasmine', 'Bonjour ! Je suis Yasmine, votre assistante virtuelle. Comment puis-je vous aider aujourd''hui ?', 'fr', true)
   ON CONFLICT (user_id) DO NOTHING;
