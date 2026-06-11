@@ -37,25 +37,83 @@ CREATE TABLE IF NOT EXISTS config_chatbot (
 ALTER TABLE produits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE config_chatbot ENABLE ROW LEVEL SECURITY;
 
--- 4. Créer les politiques RLS pour produits (si elles n'existent pas)
-CREATE POLICY IF NOT EXISTS "produits_select" ON produits FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY IF NOT EXISTS "produits_insert" ON produits FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY IF NOT EXISTS "produits_update" ON produits FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY IF NOT EXISTS "produits_delete" ON produits FOR DELETE USING (auth.uid() = user_id);
+-- 4. Supprimer les anciennes politiques produits si elles existent
+DROP POLICY IF EXISTS "produits_select" ON produits;
+DROP POLICY IF EXISTS "produits_insert" ON produits;
+DROP POLICY IF EXISTS "produits_update" ON produits;
+DROP POLICY IF EXISTS "produits_delete" ON produits;
 
--- 5. Créer les politiques RLS pour config_chatbot (si elles n'existent pas)
-CREATE POLICY IF NOT EXISTS "config_select" ON config_chatbot FOR SELECT TO authenticated USING (auth.uid() = user_id);
-CREATE POLICY IF NOT EXISTS "config_insert" ON config_chatbot FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
-CREATE POLICY IF NOT EXISTS "config_update" ON config_chatbot FOR UPDATE TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+-- Créer les nouvelles politiques RLS pour produits
+CREATE POLICY "produits_select" ON produits FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "produits_insert" ON produits FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "produits_update" ON produits FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "produits_delete" ON produits FOR DELETE USING (auth.uid() = user_id);
 
--- 6. Créer les index SI ils n'existent pas
-CREATE INDEX IF NOT EXISTS idx_produits_user_id ON produits(user_id);
-CREATE INDEX IF NOT EXISTS idx_produits_actif ON produits(actif);
-CREATE INDEX IF NOT EXISTS idx_config_chatbot_user_id ON config_chatbot(user_id);
+-- 5. Supprimer les anciennes politiques config_chatbot si elles existent
+DROP POLICY IF EXISTS "config_select" ON config_chatbot;
+DROP POLICY IF EXISTS "config_insert" ON config_chatbot;
+DROP POLICY IF EXISTS "config_update" ON config_chatbot;
 
--- 7. Ajouter les tables à la publication Realtime SI pas déjà ajoutées
-ALTER PUBLICATION supabase_realtime ADD TABLE IF NOT EXISTS produits;
-ALTER PUBLICATION supabase_realtime ADD TABLE IF NOT EXISTS config_chatbot;
+-- Créer les nouvelles politiques RLS pour config_chatbot
+CREATE POLICY "config_select" ON config_chatbot FOR SELECT TO authenticated USING (auth.uid() = user_id);
+CREATE POLICY "config_insert" ON config_chatbot FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "config_update" ON config_chatbot FOR UPDATE TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+-- 6. Créer les index uniquement s'ils n'existent pas
+DO $$
+BEGIN
+  PERFORM 1 FROM pg_indexes WHERE indexname = 'idx_produits_user_id';
+  IF NOT FOUND THEN
+    CREATE INDEX idx_produits_user_id ON produits(user_id);
+  END IF;
+EXCEPTION WHEN OTHERS THEN
+  -- Index already exists, ignore error
+END $$;
+
+DO $$
+BEGIN
+  PERFORM 1 FROM pg_indexes WHERE indexname = 'idx_produits_actif';
+  IF NOT FOUND THEN
+    CREATE INDEX idx_produits_actif ON produits(actif);
+  END IF;
+EXCEPTION WHEN OTHERS THEN
+  -- Index already exists, ignore error
+END $$;
+
+DO $$
+BEGIN
+  PERFORM 1 FROM pg_indexes WHERE indexname = 'idx_config_chatbot_user_id';
+  IF NOT FOUND THEN
+    CREATE INDEX idx_config_chatbot_user_id ON config_chatbot(user_id);
+  END IF;
+EXCEPTION WHEN OTHERS THEN
+  -- Index already exists, ignore error
+END $$;
+
+-- 7. Ajouter les tables à la publication Realtime uniquement si pas déjà ajoutées
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'produits'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE produits;
+  END IF;
+EXCEPTION WHEN OTHERS THEN
+  -- Table already in publication, ignore error
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'config_chatbot'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE config_chatbot;
+  END IF;
+EXCEPTION WHEN OTHERS THEN
+  -- Table already in publication, ignore error
+END $$;
 
 -- 8. Créer la fonction decrement_stock SI elle n'existe pas
 CREATE OR REPLACE FUNCTION decrement_stock(p_user_id UUID, p_product_name TEXT)
@@ -107,11 +165,17 @@ DROP POLICY IF EXISTS "Authenticated Delete" ON storage.objects;
 DROP POLICY IF EXISTS "Users can update own objects" ON storage.objects;
 DROP POLICY IF EXISTS "Users can delete own objects" ON storage.objects;
 
+-- Supprimer les politiques existantes avant de recréer
+DROP POLICY IF EXISTS "storage_public_select" ON storage.objects;
+DROP POLICY IF EXISTS "storage_auth_insert" ON storage.objects;
+DROP POLICY IF EXISTS "storage_auth_update" ON storage.objects;
+DROP POLICY IF EXISTS "storage_auth_delete" ON storage.objects;
+
 -- Créer les nouvelles politiques de stockage
-CREATE POLICY IF NOT EXISTS "storage_public_select" ON storage.objects FOR SELECT USING (bucket_id = 'produits');
-CREATE POLICY IF NOT EXISTS "storage_auth_insert" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'produits' AND auth.role() = 'authenticated');
-CREATE POLICY IF NOT EXISTS "storage_auth_update" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'produits' AND auth.role() = 'authenticated');
-CREATE POLICY IF NOT EXISTS "storage_auth_delete" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'produits' AND auth.role() = 'authenticated');
+CREATE POLICY "storage_public_select" ON storage.objects FOR SELECT USING (bucket_id = 'produits');
+CREATE POLICY "storage_auth_insert" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'produits' AND auth.role() = 'authenticated');
+CREATE POLICY "storage_auth_update" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'produits' AND auth.role() = 'authenticated');
+CREATE POLICY "storage_auth_delete" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'produits' AND auth.role() = 'authenticated');
 
 -- ============================================
 -- VÉRIFICATION

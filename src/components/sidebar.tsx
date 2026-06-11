@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { createClient } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -40,25 +41,47 @@ export function Sidebar() {
   const router = useRouter()
   const [dark, setDark] = useState(false)
   const [chatbotActif, setChatbotActif] = useState<boolean | null>(null)
+  const [userProfile, setUserProfile] = useState<{
+    full_name: string;
+    boutique_name: string;
+    avatar_url?: string;
+  } | null>(null)
+  const [newOrdersCount, setNewOrdersCount] = useState(0)
 
   useEffect(() => {
     const isDark = document.documentElement.classList.contains("dark")
     setDark(isDark)
 
-    const loadChatbotStatus = async () => {
+    const loadData = async () => {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      const { data } = await supabase
+      // Charger le statut du chatbot
+      const { data: chatbotData } = await supabase
         .from("config_chatbot")
         .select("actif")
         .eq("user_id", user.id)
         .single()
+      if (chatbotData) setChatbotActif(chatbotData.actif)
 
-      if (data) setChatbotActif(data.actif)
+      // Charger le profil utilisateur
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("full_name, boutique_name")
+        .eq("id", user.id)
+        .single()
+      if (profileData) setUserProfile(profileData)
+
+      // Charger le nombre de nouvelles commandes
+      const { count } = await supabase
+        .from("commandes")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("statut", "en_attente")
+      if (count) setNewOrdersCount(count)
     }
-    loadChatbotStatus()
+    loadData()
   }, [])
 
   const toggleDark = () => {
@@ -77,7 +100,7 @@ export function Sidebar() {
 
   return (
     <aside className="w-64 border-r border-cyber-border bg-cyber-bgSecond flex flex-col">
-      <div className="p-6">
+      <div className="p-4">
         <div className="flex items-center gap-2 mb-1">
           <h1 className="text-xl font-bold text-cyber-cyan">YasmineStack</h1>
           {chatbotActif !== null && (
@@ -90,6 +113,36 @@ export function Sidebar() {
         </div>
         <p className="text-sm text-cyber-textSecondary">Dashboard</p>
       </div>
+
+      {userProfile && (
+        <div className="p-4 border-t border-cyber-border">
+          <div className="flex items-center gap-3">
+            <Avatar className="h-10 w-10">
+              <AvatarImage
+                src={`https://api.dicebear.com/7.x/initials/svg?seed=${userProfile.full_name}`}
+                alt={userProfile.full_name}
+              />
+              <AvatarFallback>
+                {userProfile.full_name?.charAt(0) || 'U'}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1">
+              <p className="font-medium text-sm truncate">{userProfile.full_name}</p>
+              <p className="text-xs text-cyber-textSecondary truncate">
+                {userProfile.boutique_name}
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full mt-2 h-7 text-xs justify-start ps-8"
+            onClick={() => router.push('/profile')}
+          >
+            Voir profil
+          </Button>
+        </div>
+      )}
       <Separator />
       <nav className="flex-1 p-4 space-y-1">
         {navItems.map((item) => (
@@ -108,6 +161,28 @@ export function Sidebar() {
           </Link>
         ))}
       </nav>
+      <Separator />
+
+      {/* Indicateur de nouvelles commandes */}
+      {newOrdersCount > 0 && (
+        <div className="px-4 py-2">
+          <div className="flex items-center gap-2 bg-cyber-bgHover p-2 rounded-lg">
+            <ShoppingCart className="h-4 w-4 text-cyber-cyan" />
+            <span className="text-sm text-cyber-text">
+              {newOrdersCount} commande{newOrdersCount > 1 ? 's' : ''} en attente
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-auto h-6 px-2 text-xs"
+              onClick={() => router.push('/orders')}
+            >
+              Voir
+            </Button>
+          </div>
+        </div>
+      )}
+
       <Separator />
       <div className="p-4 space-y-2">
         <Button
