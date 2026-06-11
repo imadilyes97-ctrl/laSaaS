@@ -24,6 +24,8 @@ import {
   ArrowUp,
   ArrowDown,
   Search,
+  Settings,
+  Bot,
 } from "lucide-react"
 import {
   LineChart,
@@ -33,7 +35,7 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   ResponsiveContainer,
 } from "recharts"
 import { format, subDays, isSameDay, parseISO, formatDistanceToNow } from "date-fns"
@@ -61,14 +63,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+import * as TooltipPrimitive from "@radix-ui/react-tooltip"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { motion, AnimatePresence } from "motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -626,7 +623,7 @@ export default function DashboardPage() {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
                 <YAxis />
-                <Tooltip />
+                <RechartsTooltip />
                 <Bar dataKey="commandes" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -642,7 +639,7 @@ export default function DashboardPage() {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
                 <YAxis />
-                <Tooltip />
+                <RechartsTooltip />
                 <Line
                   type="monotone"
                   dataKey="revenu"
@@ -728,20 +725,20 @@ export default function DashboardPage() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
+                            <TooltipPrimitive.Provider>
+                              <TooltipPrimitive.Root>
+                                <TooltipPrimitive.Trigger asChild>
                                   <Badge variant="secondary" className="max-w-[200px] truncate cursor-pointer">
                                     {order.produits}
                                   </Badge>
-                                </TooltipTrigger>
-                                <TooltipContent>
+                                </TooltipPrimitive.Trigger>
+                                <TooltipPrimitive.Content side="top">
                                   <p>{order.produits}</p>
                                   {order.couleur && <p>Couleur: {order.couleur}</p>}
                                   {order.taille && <p>Taille: {order.taille}</p>}
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
+                                </TooltipPrimitive.Content>
+                              </TooltipPrimitive.Root>
+                            </TooltipPrimitive.Provider>
                           </TableCell>
                           <TableCell className="text-right font-medium">
                             {order.total.toLocaleString()} DA
@@ -763,21 +760,21 @@ export default function DashboardPage() {
                             </Select>
                           </TableCell>
                           <TableCell>
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
+                            <TooltipPrimitive.Provider>
+                              <TooltipPrimitive.Root>
+                                <TooltipPrimitive.Trigger asChild>
                                   <p className="text-xs text-muted-foreground cursor-pointer">
                                     {formatDistanceToNow(parseISO(order.created_at), {
                                       addSuffix: true,
                                       locale: fr
                                     })}
                                   </p>
-                                </TooltipTrigger>
-                                <TooltipContent>
+                                </TooltipPrimitive.Trigger>
+                                <TooltipPrimitive.Content side="top">
                                   <p>{format(parseISO(order.created_at), "PPpp", { locale: fr })}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
+                                </TooltipPrimitive.Content>
+                              </TooltipPrimitive.Root>
+                            </TooltipPrimitive.Provider>
                           </TableCell>
                           <TableCell className="text-right">
                             <DropdownMenu>
