@@ -52,11 +52,27 @@ export default function OnboardingPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return ""
 
-    const ext = file.name.split(".").pop()
-    const path = `logos/${user.id}/logo.${ext}`
-    await supabase.storage.from("produits").upload(path, file, { upsert: true })
-    const { data: urlData } = supabase.storage.from("produits").getPublicUrl(path)
-    return urlData?.publicUrl || ""
+    try {
+      const ext = file.name.split(".").pop()
+      const path = `logos/${user.id}/logo.${ext}`
+
+      // Upload the file
+      const { error: uploadError } = await supabase.storage
+        .from("produits")
+        .upload(path, file, { upsert: true })
+
+      if (uploadError) {
+        console.error("Upload error:", uploadError.message)
+        return ""
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage.from("produits").getPublicUrl(path)
+      return urlData?.publicUrl || ""
+    } catch (error) {
+      console.error("Logo upload failed:", error)
+      return ""
+    }
   }
 
   const handleLogoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {

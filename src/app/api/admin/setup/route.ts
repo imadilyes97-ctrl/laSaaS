@@ -136,26 +136,18 @@ export async function POST() {
     })
   }
 
-  const pool = new Pool({
-    host: `db.${process.env.NEXT_PUBLIC_SUPABASE_URL!.match(/https:\/\/(.+)\.supabase\.co/)![1]}.supabase.co`,
-    port: 5432,
-    database: "postgres",
-    user: "postgres",
-    password: process.env.DATABASE_PASSWORD,
-    ssl: { rejectUnauthorized: false },
-    connectionTimeoutMillis: 8000,
-  })
-
   try {
-    const client = await pool.connect()
-    await client.query(SQL)
-    client.release()
-    results.push({ table: "sql.execution", status: "success" })
+    // Execute SQL using Supabase service role
+    const { error: sqlError } = await supabase.rpc('run_sql', { sql_text: SQL })
+
+    if (sqlError) {
+      results.push({ table: "sql.execution", status: "failed", error: sqlError.message?.substring(0, 150) })
+    } else {
+      results.push({ table: "sql.execution", status: "success" })
+    }
   } catch (e: any) {
     results.push({ table: "sql.execution", status: "failed", error: e.message?.substring(0, 150) })
   }
-
-  await pool.end()
 
   return NextResponse.json({ results })
 }

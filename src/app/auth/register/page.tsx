@@ -55,13 +55,28 @@ export default function RegisterPage() {
             id: data.user?.id,
             full_name: fullName,
             username,
-            boutique_name: username, // Also set boutique_name for backward compatibility
+            boutique_name: username,
           })
           .select()
 
         if (profileError) {
           console.error("Profile update error:", profileError.message)
           // Continue anyway as this is not critical
+        }
+
+        // Create config_chatbot entry if it doesn't exist
+        const { error: configError } = await supabase
+          .from("config_chatbot")
+          .upsert({
+            user_id: data.user?.id,
+            nom_chatbot: 'Yasmine',
+            message_bienvenue: 'Bonjour ! Je suis Yasmine, votre assistante virtuelle. Comment puis-je vous aider aujourd\'hui ?',
+            langue: 'fr',
+            actif: true,
+          })
+
+        if (configError) {
+          console.error("Config creation error:", configError.message)
         }
 
         router.push("/onboarding")
