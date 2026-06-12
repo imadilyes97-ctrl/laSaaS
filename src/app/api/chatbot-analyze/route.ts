@@ -58,7 +58,7 @@ Produits disponibles :
 ${(produits as any[])
   .map(
     (p) =>
-      `- ${p.nom} | Prix: ${p.prix} DZD | Tailles: ${(p.tailles || []).join(",")}  Description visuelle: ${JSON.stringify(p.description_visuelle)}`
+      `- ${p.nom} | Prix: ${p.prix} DZD | Tailles: ${(p.tailles || []).join(",")} | Description visuelle: ${JSON.stringify(p.description_visuelle)}`
   )
   .join("\n")}
 
