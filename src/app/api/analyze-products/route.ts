@@ -5,18 +5,32 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const token = searchParams.get('token')
 
-  // Vérification du token secret
-  if (token !== process.env.SECRET_TOKEN) {
-    return NextResponse.json({ error: "Token invalide" }, { status: 403 })
+  // Vérification du token contre la table config_chatbot (comme le chatbot)
+  if (!token) {
+    return NextResponse.json({ error: "Token requis" }, { status: 401 })
   }
 
   const supabase = createServerSupabaseClient()
 
+  // Chercher le user_id par secret_token
+  const { data: config, error: configError } = await supabase
+    .from('config_chatbot')
+    .select('user_id')
+    .eq('secret_token', token)
+    .eq('actif', true)
+    .single()
+
+  if (configError || !config) {
+    console.log("Token invalide ou config introuvable:", configError?.message)
+    return NextResponse.json({ error: "Token invalide" }, { status: 401 })
+  }
+
   try {
-    // Récupérer tous les produits avec photo_url
+    // Récupérer les produits de ce user_id uniquement
     const { data: produits, error } = await supabase
       .from("produits")
       .select("*")
+      .eq("user_id", config.user_id)
       .not("photo_url", "is", null)
       .not("photo_url", "eq", "")
 
