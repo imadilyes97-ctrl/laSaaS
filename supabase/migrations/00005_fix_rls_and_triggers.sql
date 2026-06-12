@@ -67,6 +67,13 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
+  INSERT INTO public.profiles (id, secret_token, full_name, username, boutique_name)
+  VALUES (NEW.id, gen_random_uuid(), NEW.raw_user_meta_data ->> 'full_name', NEW.raw_user_meta_data ->> 'username', NEW.raw_user_meta_data ->> 'username')
+  ON CONFLICT (id) DO UPDATE SET
+    full_name = EXCLUDED.full_name,
+    username = EXCLUDED.username,
+    boutique_name = EXCLUDED.boutique_name;
+
   INSERT INTO config_chatbot (user_id, nom_chatbot, message_bienvenue, langue, actif)
   VALUES (
     NEW.id,

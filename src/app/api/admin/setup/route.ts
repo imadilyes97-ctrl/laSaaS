@@ -36,7 +36,7 @@ CREATE POLICY "produits_delete" ON produits FOR DELETE USING (auth.uid() = user_
 CREATE INDEX IF NOT EXISTS idx_produits_user_id ON produits(user_id);
 CREATE INDEX IF NOT EXISTS idx_produits_actif ON produits(actif);
 
-ALTER PUBLICATION supabase_realtime ADD TABLE produits;
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE produits; EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'produits already in publication'; END; $$;
 
 -- ============================================
 -- CONFIG CHATBOT
@@ -64,7 +64,7 @@ CREATE POLICY "config_insert" ON config_chatbot FOR INSERT TO authenticated WITH
 CREATE POLICY "config_update" ON config_chatbot FOR UPDATE TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
 CREATE INDEX IF NOT EXISTS idx_config_chatbot_user_id ON config_chatbot(user_id);
-ALTER PUBLICATION supabase_realtime ADD TABLE config_chatbot;
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE config_chatbot; EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'config_chatbot already in publication'; END; $$;
 
 -- ============================================
 -- STORAGE POLICIES

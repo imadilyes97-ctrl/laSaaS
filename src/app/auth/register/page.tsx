@@ -48,8 +48,8 @@ export default function RegisterPage() {
 
     if (data.session) {
       try {
-        // Check if profile exists, if not insert it
-        const { data: profileData, error: profileError } = await supabase
+        // Upsert profile - conflict on primary key (id)
+        const { error: profileError } = await supabase
           .from("profiles")
           .upsert({
             id: data.user?.id,
@@ -57,14 +57,12 @@ export default function RegisterPage() {
             username,
             boutique_name: username,
           })
-          .select()
 
         if (profileError) {
           console.error("Profile update error:", profileError.message)
-          // Continue anyway as this is not critical
         }
 
-        // Create config_chatbot entry if it doesn't exist
+        // Upsert config_chatbot - conflict on unique user_id
         const { error: configError } = await supabase
           .from("config_chatbot")
           .upsert({
@@ -73,7 +71,7 @@ export default function RegisterPage() {
             message_bienvenue: 'Bonjour ! Je suis Yasmine, votre assistante virtuelle. Comment puis-je vous aider aujourd\'hui ?',
             langue: 'fr',
             actif: true,
-          })
+          }, { onConflict: 'user_id' })
 
         if (configError) {
           console.error("Config creation error:", configError.message)

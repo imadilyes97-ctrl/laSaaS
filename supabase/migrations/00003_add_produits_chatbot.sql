@@ -36,8 +36,8 @@ CREATE INDEX IF NOT EXISTS idx_produits_actif ON produits(actif);
 CREATE INDEX IF NOT EXISTS idx_config_chatbot_user_id ON config_chatbot(user_id);
 
 -- Realtime
-ALTER PUBLICATION supabase_realtime ADD TABLE produits;
-ALTER PUBLICATION supabase_realtime ADD TABLE config_chatbot;
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE produits; EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'produits already in publication'; END; $$;
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE config_chatbot; EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'config_chatbot already in publication'; END; $$;
 
 -- RLS
 ALTER TABLE produits ENABLE ROW LEVEL SECURITY;
@@ -77,10 +77,11 @@ CREATE POLICY "Users can update own config_chatbot"
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, secret_token, full_name, username)
-  VALUES (NEW.id, gen_random_uuid(), '', '');
-  INSERT INTO public.config_chatbot (user_id, nom_chatbot, message_bienvenue, langue)
-  VALUES (NEW.id, 'Yasmine', 'Bonjour ! Je suis Yasmine, votre assistante virtuelle. Comment puis-je vous aider aujourd''hui ?', 'FR');
+  INSERT INTO public.profiles (id, secret_token, full_name, username, boutique_name)
+  VALUES (NEW.id, gen_random_uuid(), NEW.raw_user_meta_data ->> 'full_name', NEW.raw_user_meta_data ->> 'username', NEW.raw_user_meta_data ->> 'username');
+  INSERT INTO public.config_chatbot (user_id, nom_chatbot, message_bienvenue, langue, actif)
+  VALUES (NEW.id, 'Yasmine', 'Bonjour ! Je suis Yasmine, votre assistante virtuelle. Comment puis-je vous aider aujourd''hui ?', 'fr', true)
+  ON CONFLICT (user_id) DO NOTHING;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

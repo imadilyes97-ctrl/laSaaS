@@ -97,30 +97,69 @@ CREATE INDEX IF NOT EXISTS idx_config_chatbot_user_id ON config_chatbot(user_id)
 -- ============================================
 -- REALTIME
 -- ============================================
-ALTER PUBLICATION supabase_realtime ADD TABLE commandes;
-ALTER PUBLICATION supabase_realtime ADD TABLE conversations;
-ALTER PUBLICATION supabase_realtime ADD TABLE produits;
-ALTER PUBLICATION supabase_realtime ADD TABLE config_chatbot;
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE commandes;
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'commandes already in publication';
+END;
+$$;
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE conversations;
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'conversations already in publication';
+END;
+$$;
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE produits;
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'produits already in publication';
+END;
+$$;
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE config_chatbot;
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'config_chatbot already in publication';
+END;
+$$;
 
 -- ============================================
 -- RLS POLICIES
 -- ============================================
+DROP POLICY IF EXISTS "profiles_select" ON profiles;
+DROP POLICY IF EXISTS "profiles_update" ON profiles;
+DROP POLICY IF EXISTS "profiles_insert" ON profiles;
 CREATE POLICY "profiles_select" ON profiles FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "profiles_update" ON profiles FOR UPDATE USING (auth.uid() = id);
 CREATE POLICY "profiles_insert" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
 
+DROP POLICY IF EXISTS "commandes_select" ON commandes;
+DROP POLICY IF EXISTS "commandes_insert" ON commandes;
+DROP POLICY IF EXISTS "commandes_update" ON commandes;
 CREATE POLICY "commandes_select" ON commandes FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "commandes_insert" ON commandes FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "commandes_update" ON commandes FOR UPDATE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "conversations_select" ON conversations;
+DROP POLICY IF EXISTS "conversations_insert" ON conversations;
 CREATE POLICY "conversations_select" ON conversations FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "conversations_insert" ON conversations FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "produits_select" ON produits;
+DROP POLICY IF EXISTS "produits_insert" ON produits;
+DROP POLICY IF EXISTS "produits_update" ON produits;
+DROP POLICY IF EXISTS "produits_delete" ON produits;
 CREATE POLICY "produits_select" ON produits FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "produits_insert" ON produits FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "produits_update" ON produits FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "produits_delete" ON produits FOR DELETE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "config_select" ON config_chatbot;
+DROP POLICY IF EXISTS "config_insert" ON config_chatbot;
+DROP POLICY IF EXISTS "config_update" ON config_chatbot;
 CREATE POLICY "config_select" ON config_chatbot FOR SELECT TO authenticated USING (auth.uid() = user_id);
 CREATE POLICY "config_insert" ON config_chatbot FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "config_update" ON config_chatbot FOR UPDATE TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
@@ -131,6 +170,7 @@ CREATE POLICY "config_update" ON config_chatbot FOR UPDATE TO authenticated USIN
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = now(); RETURN NEW; END; $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_profiles_updated_at ON profiles;
 CREATE TRIGGER set_profiles_updated_at BEFORE UPDATE ON profiles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE OR REPLACE FUNCTION decrement_stock(p_user_id UUID, p_product_name TEXT)
@@ -147,7 +187,8 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, secret_token, full_name, username) VALUES (NEW.id, gen_random_uuid(), '', '');
+  INSERT INTO public.profiles (id, secret_token, full_name, username, boutique_name)
+  VALUES (NEW.id, gen_random_uuid(), NEW.raw_user_meta_data ->> 'full_name', NEW.raw_user_meta_data ->> 'username', NEW.raw_user_meta_data ->> 'username');
   INSERT INTO public.config_chatbot (user_id, nom_chatbot, message_bienvenue, langue, actif)
   VALUES (NEW.id, 'Yasmine', 'Bonjour ! Je suis Yasmine, votre assistante virtuelle. Comment puis-je vous aider aujourd''hui ?', 'fr', true)
   ON CONFLICT (user_id) DO NOTHING;
@@ -177,7 +218,7 @@ ON CONFLICT (id) DO NOTHING;
 -- S'assurer que le bucket est public
 UPDATE storage.buckets SET public = true WHERE id = 'produits';
 
--- Supprimer anciennes politiques storage pour éviter les conflits
+-- Supprimer toutes les politiques storage pour éviter les conflits
 DROP POLICY IF EXISTS "Public Access" ON storage.objects;
 DROP POLICY IF EXISTS "Public read access" ON storage.objects;
 DROP POLICY IF EXISTS "Authenticated Upload" ON storage.objects;
@@ -185,6 +226,10 @@ DROP POLICY IF EXISTS "Authenticated users can upload" ON storage.objects;
 DROP POLICY IF EXISTS "Authenticated Delete" ON storage.objects;
 DROP POLICY IF EXISTS "Users can update own objects" ON storage.objects;
 DROP POLICY IF EXISTS "Users can delete own objects" ON storage.objects;
+DROP POLICY IF EXISTS "storage_public_select" ON storage.objects;
+DROP POLICY IF EXISTS "storage_auth_insert" ON storage.objects;
+DROP POLICY IF EXISTS "storage_auth_update" ON storage.objects;
+DROP POLICY IF EXISTS "storage_auth_delete" ON storage.objects;
 
 -- Lecture publique
 CREATE POLICY "storage_public_select" ON storage.objects FOR SELECT USING (bucket_id = 'produits');

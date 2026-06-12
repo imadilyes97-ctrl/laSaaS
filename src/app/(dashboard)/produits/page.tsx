@@ -43,6 +43,8 @@ export default function ProduitsPage() {
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState("")
+  const [analysing, setAnalysing] = useState(false)
+  const [descriptionVisuelle, setDescriptionVisuelle] = useState<Record<string, unknown> | null>(null)
 
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -166,6 +168,23 @@ export default function ProduitsPage() {
     const url = await uploadImage(file)
     if (url) {
       setForm((f) => ({ ...f, photo_url: url }))
+      setAnalysing(true)
+      setUploadProgress(0)
+      try {
+        const res = await fetch("/api/analyze-image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ photoUrl: url }),
+        })
+        const data = await res.json()
+        if (data.description) {
+          setDescriptionVisuelle(data.description)
+        }
+      } catch {
+        console.error("Erreur analyse visuelle")
+      }
+      setAnalysing(false)
+      setUploadProgress(100)
       setTimeout(() => {
         URL.revokeObjectURL(objectUrl)
         setPreviewUrl("")
@@ -182,6 +201,7 @@ export default function ProduitsPage() {
       setUploadError("")
       setUploadProgress(0)
       setSaveError("")
+      setDescriptionVisuelle(null)
     }
     setOpen(open)
   }
@@ -205,6 +225,8 @@ export default function ProduitsPage() {
       .map((c) => c.trim())
       .filter(Boolean)
 
+    const descVisuelle = descriptionVisuelle || (editProduct?.description_visuelle) || {}
+
     const payload = {
       user_id: user.id,
       nom: form.nom,
@@ -214,6 +236,7 @@ export default function ProduitsPage() {
       stock: form.stock,
       tailles: taillesArr,
       couleurs: couleursArr,
+      description_visuelle: descVisuelle,
     }
 
     let error: any = null
@@ -234,6 +257,7 @@ export default function ProduitsPage() {
 
     setForm(defaultForm)
     setEditProduct(null)
+    setDescriptionVisuelle(null)
     setOpen(false)
     setSaving(false)
     fetchProduits()
@@ -250,6 +274,7 @@ export default function ProduitsPage() {
       couleurs: (p.couleurs || []).join(", "),
       photo_url: p.photo_url,
     })
+    setDescriptionVisuelle(p.description_visuelle || null)
     setOpen(true)
   }
 
@@ -307,8 +332,8 @@ export default function ProduitsPage() {
             )}
           </div>
           <Dialog open={open} onOpenChange={handleDialogClose}>
-            <DialogTrigger asChild>
-              <Button onClick={() => { setEditProduct(null); setForm(defaultForm) }}>
+              <DialogTrigger asChild>
+                <Button onClick={() => { setEditProduct(null); setForm(defaultForm); setDescriptionVisuelle(null) }}>
                 <Plus className="h-4 w-4 mr-2" />
                 Ajouter
               </Button>
@@ -346,12 +371,17 @@ export default function ProduitsPage() {
                         type="button"
                         variant="outline"
                         onClick={() => fileRef.current?.click()}
-                        disabled={uploading}
+                        disabled={uploading || analysing}
                       >
                         {uploading ? (
                           <>
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                             Upload...
+                          </>
+                        ) : analysing ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Analyse...
                           </>
                         ) : (
                           "Choisir une image"

@@ -10,6 +10,7 @@ export type Product = {
   couleurs: string[]
   stock: number
   actif: boolean
+  description_visuelle: Record<string, unknown>
   created_at: string
 }
 
