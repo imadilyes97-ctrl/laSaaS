@@ -4,6 +4,8 @@ export async function POST(request: Request) {
   try {
     const { photoUrl } = await request.json()
 
+    console.log('Appel Groq pour photo:', photoUrl)
+
     if (!photoUrl) {
       return NextResponse.json({ error: "photoUrl requis" }, { status: 400 })
     }
@@ -42,12 +44,17 @@ Réponds UNIQUEMENT avec le JSON.`,
       }),
     })
 
+    console.log('Réponse Groq status:', groqResp.status)
+
     if (!groqResp.ok) {
       const errText = await groqResp.text()
+      console.log('Erreur Groq:', errText)
       return NextResponse.json({ error: "Erreur Groq", details: errText }, { status: 502 })
     }
 
     const groqData = await groqResp.json()
+    console.log('Réponse Groq data:', groqData)
+
     const rawContent = groqData.choices?.[0]?.message?.content
 
     if (!rawContent) {
