@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { analyzeImageWithGroq, findMatchingProduct } from "@/lib/groq-analyzer"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,7 +27,49 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Token invalide" }, { status: 401 })
     }
 
-    const { token: _t, ...orderData } = body
+    // Si une imageUrl est fournie → reconnaître le produit
+    if (body.imageUrl) {
+      const clientDescription = await analyzeImageWithGroq(body.imageUrl)
+      if (!clientDescription) {
+        return NextResponse.json({ erreur: "Impossible d'analyser l'image" }, { status: 502 })
+      }
+
+      const { data: produits } = await supabase
+        .from("produits")
+        .select("id, nom, description, photo_url, prix, devise, tailles, couleurs, stock, description_visuelle")
+        .eq("user_id", config.user_id)
+        .eq("actif", true)
+        .gt("stock", 0)
+
+      if (!produits || produits.length === 0) {
+        return NextResponse.json({ trouve: false, message: "Aucun produit disponible" })
+      }
+
+      const matchResult = await findMatchingProduct(clientDescription, supabase, config.user_id)
+
+      if (!matchResult.trouve) {
+        return NextResponse.json({
+          trouve: false,
+          message: "Désolé, je n'ai pas trouvé ce produit dans notre catalogue."
+        })
+      }
+
+      const p = matchResult.produit
+      return NextResponse.json({
+        trouve: true,
+        message: `Oui, nous avons "${p.nom}" en stock ! ${p.prix} ${p.devise}. ${p.stock > 0 ? `Il en reste ${p.stock}.` : ""}`,
+        produit: {
+          nom: p.nom,
+          prix: p.prix,
+          devise: p.devise,
+          stock: p.stock,
+          photo_url: p.photo_url
+        }
+      })
+    }
+
+    // Sinon → créer une commande (comportement existant)
+    const { token: _t, imageUrl: _i, ...orderData } = body
 
     const { error: orderError } = await supabase
       .from("commandes")
