@@ -48,6 +48,7 @@ export async function GET(request: Request) {
 
     let updatedCount = 0
     let errorCount = 0
+    const erreurs_details: string[] = []
 
     // Analyser chaque produit
     for (const produit of produits) {
@@ -95,6 +96,7 @@ Réponds UNIQUEMENT avec le JSON.`,
           const errText = await groqResp.text()
           console.error(`Erreur Groq pour produit ${produit.id}:`, errText)
           errorCount++
+          erreurs_details.push(`Produit #${produit.id} ${produit.nom}: Groq ${groqResp.status} - ${errText.substring(0, 200)}`)
           continue
         }
 
@@ -136,7 +138,8 @@ Réponds UNIQUEMENT avec le JSON.`,
       message: "Analyse terminée",
       produits_totaux: produits.length,
       produits_mis_a_jour: updatedCount,
-      erreurs: errorCount
+      erreurs: errorCount,
+      details_erreurs: erreurs_details
     }, { status: 200 })
 
   } catch (err) {
