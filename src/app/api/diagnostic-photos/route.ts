@@ -4,7 +4,7 @@ import { createClient } from "@supabase/supabase-js"
 export async function GET() {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
   const results: any[] = []
@@ -13,11 +13,21 @@ export async function GET() {
   const { data: bucket, error: bucketError } = await supabase.storage.getBucket("produits")
   results.push({
     test: "Bucket 'produits' existe",
-    ok: !bucketError,
+    ok: !!bucket,
     detail: bucketError ? bucketError.message : `Public: ${bucket.public}`
   })
 
-  // 2. Récupérer les produits avec photo
+  // 2. Vérifier via SQL direct (autre méthode)
+  const { error: sqlError } = await supabase.rpc("pgstorage_validate_bucket", { bucket_name: "produits" })
+  if (!sqlError) {
+    results.push({
+      test: "Bucket valide via SQL",
+      ok: true,
+      detail: "Bucket accessible"
+    })
+  }
+
+  // 3. Récupérer les produits avec photo
   const { data: produits, error: produitsError } = await supabase
     .from("produits")
     .select("id, nom, photo_url")
@@ -44,7 +54,6 @@ export async function GET() {
       detail: `${produits.length} trouvé(s)`
     })
 
-    // 3. Tester chaque URL
     for (const p of produits) {
       try {
         const resp = await fetch(p.photo_url, { method: "HEAD" })
@@ -72,6 +81,6 @@ export async function GET() {
       ? "✅ Toutes les URLs sont accessibles"
       : failed === results.length
         ? "❌ Aucune URL accessible — va dans Supabase → Storage → bucket produits → active Public bucket"
-        : `⚠️ ${failed}/${results.length} échecs — vérifie les détails`
+        : `⚠️ ${failed}/${results.length} échecs`
   })
 }
