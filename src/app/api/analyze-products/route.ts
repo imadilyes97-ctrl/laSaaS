@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createServerSupabaseClient } from "@/lib/supabase"
+import { createClient } from "@supabase/supabase-js"
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -10,7 +10,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Token requis" }, { status: 401 })
   }
 
-  const supabase = createServerSupabaseClient()
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
 
   // Chercher le user_id par secret_token
   const { data: config, error: configError } = await supabase
