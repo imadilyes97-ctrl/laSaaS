@@ -64,17 +64,6 @@ export async function GET(request: Request) {
           continue
         }
 
-        console.log(`Réponse Groq status pour produit ${produit.id}:`, groqResp.status)
-
-        if (!groqResp.ok) {
-          const errText = await groqResp.text()
-          console.error(`Erreur Groq pour produit ${produit.id}:`, errText)
-          errorCount++
-          erreurs_details.push(`Produit #${produit.id} ${produit.nom}: Groq ${groqResp.status} - ${errText.substring(0, 200)}`)
-          continue
-        }
-
-        // La description est déjà parsée par analyzeImageWithGroq
         const description = clientDescription
 
         // Mettre à jour le produit avec la description visuelle
