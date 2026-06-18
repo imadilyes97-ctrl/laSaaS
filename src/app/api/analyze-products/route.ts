@@ -67,9 +67,8 @@ export async function GET(request: Request) {
         const description = clientDescription
 
         // Mettre à jour le produit avec la description visuelle
-        const { error: updateError } = await supabase
-          .from("produits")
-          .update({ description_visuelle: description } as any)
+        const { error: updateError } = await (supabase.from("produits") as any)
+          .update({ description_visuelle: description })
           .eq("id", produit.id)
 
         if (updateError) {
