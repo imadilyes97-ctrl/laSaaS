@@ -79,8 +79,7 @@ export async function POST(request: Request) {
     // Sinon → créer une commande (comportement existant)
     const { token: _t, imageUrl: _i, ...orderData } = result.data
 
-    const { error: orderError } = await supabase
-      .from("commandes")
+    const { error: orderError } = await (supabase.from("commandes") as any)
       .insert({
         user_id: config.user_id,
         nom_client: orderData.nom_client || orderData.nom || "",
