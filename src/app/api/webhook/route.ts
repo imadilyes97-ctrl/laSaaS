@@ -41,13 +41,11 @@ export async function POST(request: Request) {
         return NextResponse.json({ erreur: "Impossible d'analyser l'image" }, { status: 502 })
       }
 
-      const { data: produits } = await supabase
-        .from("produits")
+      const { data: produits } = await (supabase.from("produits") as any)
         .select("id, nom, description, photo_url, prix, devise, tailles, couleurs, stock, description_visuelle")
         .eq("user_id", config.user_id)
         .eq("actif", true)
         .gt("stock", 0)
-        .returns<Product[]>()
 
       if (!produits || produits.length === 0) {
         return NextResponse.json({ trouve: false, message: "Aucun produit disponible" })

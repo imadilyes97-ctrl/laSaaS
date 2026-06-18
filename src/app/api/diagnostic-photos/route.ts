@@ -63,13 +63,11 @@ export async function GET() {
       SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
-    const { data: produits } = await supabase
-      .from("produits")
+    const { data: produits } = await (supabase.from("produits") as any)
       .select("id, nom, photo_url")
       .not("photo_url", "is", null)
       .not("photo_url", "eq", "")
       .limit(10)
-      .returns<Product[]>()
 
     if (!produits?.length) {
       results.push({

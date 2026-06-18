@@ -138,7 +138,7 @@ export async function POST() {
 
   try {
     // Execute SQL using Supabase service role
-    const { error: sqlError } = await supabase.rpc('run_sql', { sql_text: SQL })
+    const { error: sqlError } = await (supabase.rpc as any)('run_sql', { sql_text: SQL })
 
     if (sqlError) {
       results.push({ table: "sql.execution", status: "failed", error: sqlError.message?.substring(0, 150) })

@@ -72,8 +72,7 @@ export class ProductService {
     productId: string,
     description: ProductDescription
   ) {
-    const { error } = await this.supabase
-      .from("produits")
+    const { error } = await (this.supabase.from("produits") as any)
       .update({ description_visuelle: description })
       .eq("id", productId)
 
