@@ -4,7 +4,8 @@ import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Camera, Upload, Search, Package, Loader2, CheckCircle2, XCircle, Clock, Info } from "lucide-react"
-import { LoadingSpinner, StepProgress } from "@/components/ui/loading"
+import { LoadingSpinner } from "@/components/ui/loading"
+import { StepProgress } from "@/components/ui/progress"
 import { Progress } from "@/components/ui/progress"
 
 export default function ReconnaitreProduitPage() {
