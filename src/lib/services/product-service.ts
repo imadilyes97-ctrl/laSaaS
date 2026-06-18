@@ -100,7 +100,7 @@ export class ProductService {
       .or(
         keywords.map(keyword =>
           `nom.ilike.%${keyword}%`
-        )
+        ).join(',')
       )
       .limit(limit)
 
