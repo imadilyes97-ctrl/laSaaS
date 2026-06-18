@@ -106,7 +106,7 @@ export async function findMatchingProduct(
 
   // Pagination pour éviter de charger tous les produits en mémoire
   while (hasMore) {
-    const { data: produits, error } = await supabase
+    const { data: produits, error } = await (supabase as any)
       .from("produits")
       .select("*")
       .eq("user_id", userId)
@@ -114,7 +114,6 @@ export async function findMatchingProduct(
       .gt("stock", 0)
       .order("nom")
       .range(offset, offset + pageSize - 1)
-      .returns<Product[]>()
 
     if (error) {
       console.error('❌ Erreur Supabase:', error)
