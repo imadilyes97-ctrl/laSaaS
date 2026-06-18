@@ -1,19 +1,25 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { getSupabaseServiceClient } from "@/lib/supabase-service"
 import { analyzeImageWithGroq, findMatchingProduct } from "@/lib/groq-analyzer"
+import { ChatbotAnalyzeSchema } from "@/lib/schemas"
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const supabase = getSupabaseServiceClient()
 
 export async function POST(request: Request) {
   try {
-    const { token, imageUrl } = await request.json()
+    const body = await request.json()
 
-    if (!token || !imageUrl) {
-      return NextResponse.json({ error: "token et imageUrl requis" }, { status: 400 })
+    // Validation avec Zod
+    const result = ChatbotAnalyzeSchema.safeParse(body)
+    if (!result.success) {
+      console.error('❌ Validation échouée:', result.error.flatten())
+      return NextResponse.json(
+        { error: "Payload invalide", details: result.error.flatten() },
+        { status: 400 }
+      )
     }
+
+    const { token, imageUrl } = result.data
 
     const { data: config, error: configError } = await supabase
       .from("config_chatbot")

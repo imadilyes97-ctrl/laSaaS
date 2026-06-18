@@ -1,14 +1,24 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { getSupabaseServiceClient } from "@/lib/supabase-service"
+import { TranscribePayloadSchema } from "@/lib/schemas"
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const supabase = getSupabaseServiceClient()
 
 export async function POST(request: Request) {
   try {
-    const { token, audioUrl, metaToken } = await request.json()
+    const body = await request.json()
+
+    // Validation avec Zod
+    const result = TranscribePayloadSchema.safeParse(body)
+    if (!result.success) {
+      console.error('❌ Validation échouée:', result.error.flatten())
+      return NextResponse.json(
+        { error: "Payload invalide", details: result.error.flatten() },
+        { status: 400 }
+      )
+    }
+
+    const { token, audioUrl, metaToken } = result.data
 
     // Vérifier le token
     const { data: config } = await supabase

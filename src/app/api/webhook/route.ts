@@ -1,20 +1,25 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { getSupabaseServiceClient } from "@/lib/supabase-service"
 import { analyzeImageWithGroq, findMatchingProduct } from "@/lib/groq-analyzer"
+import { WebhookPayloadSchema } from "@/lib/schemas"
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const supabase = getSupabaseServiceClient()
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const token = body.token
 
-    if (!token) {
-      return NextResponse.json({ error: "Token manquant" }, { status: 401 })
+    // Validation avec Zod
+    const result = WebhookPayloadSchema.safeParse(body)
+    if (!result.success) {
+      console.error('❌ Validation échouée:', result.error.flatten())
+      return NextResponse.json(
+        { error: "Payload invalide", details: result.error.flatten() },
+        { status: 400 }
+      )
     }
+
+    const { token } = result.data
 
     const { data: config, error: configError } = await supabase
       .from("config_chatbot")
@@ -24,12 +29,13 @@ export async function POST(request: Request) {
       .single()
 
     if (configError || !config) {
+      console.error('❌ Erreur config:', configError?.message)
       return NextResponse.json({ error: "Token invalide" }, { status: 401 })
     }
 
     // Si une imageUrl est fournie → reconnaître le produit
-    if (body.imageUrl) {
-      const clientDescription = await analyzeImageWithGroq(body.imageUrl)
+    if (result.data.imageUrl) {
+      const clientDescription = await analyzeImageWithGroq(result.data.imageUrl)
       if (!clientDescription) {
         return NextResponse.json({ erreur: "Impossible d'analyser l'image" }, { status: 502 })
       }
@@ -69,7 +75,7 @@ export async function POST(request: Request) {
     }
 
     // Sinon → créer une commande (comportement existant)
-    const { token: _t, imageUrl: _i, ...orderData } = body
+    const { token: _t, imageUrl: _i, ...orderData } = result.data
 
     const { error: orderError } = await supabase
       .from("commandes")

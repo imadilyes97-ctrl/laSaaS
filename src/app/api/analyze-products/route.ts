@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { getSupabaseServiceClient } from "@/lib/supabase-service"
+import { analyzeImageWithGroq } from "@/lib/groq-analyzer"
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -10,10 +11,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Token requis" }, { status: 401 })
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+  const supabase = getSupabaseServiceClient()
 
   // Chercher le user_id par secret_token
   const { data: config, error: configError } = await supabase
@@ -55,40 +53,15 @@ export async function GET(request: Request) {
       try {
         console.log(`Analyse du produit ${produit.id}: ${produit.photo_url}`)
 
-        // Appeler l'API Groq pour analyser l'image
-        const groqResp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "meta-llama/llama-4-scout-17b-16e-instruct",
-            messages: [
-              {
-                role: "user",
-                content: [
-                  { type: "image_url", image_url: { url: produit.photo_url } },
-                  {
-                    type: "text",
-                    text: `Décris ce produit en JSON:
-{
-  "type": "type de vêtement ou produit",
-  "couleur_principale": "couleur dominante",
-  "couleurs": ["toutes les couleurs visibles"],
-  "matiere": "tissu ou matière apparente",
-  "style": "style vestimentaire",
-  "details_visuels": "détails importants comme logo, broderie, coupe, etc.",
-  "mots_cles": ["mot1", "mot2", "mot3"]
-}
-Réponds UNIQUEMENT avec le JSON.`,
-                  },
-                ],
-              },
-            ],
-            max_tokens: 400,
-          }),
-        })
+        // Utiliser la fonction partagée avec cache
+        const clientDescription = await analyzeImageWithGroq(produit.photo_url)
+
+        if (!clientDescription) {
+          console.error(`❌ Échec de l'analyse Groq pour produit ${produit.id}`)
+          errorCount++
+          erreurs_details.push(`Produit #${produit.id} ${produit.nom}: Échec de l'analyse Groq`)
+          continue
+        }
 
         console.log(`Réponse Groq status pour produit ${produit.id}:`, groqResp.status)
 
@@ -100,19 +73,8 @@ Réponds UNIQUEMENT avec le JSON.`,
           continue
         }
 
-        const groqData = await groqResp.json()
-        console.log(`Réponse Groq data pour produit ${produit.id}:`, groqData)
-
-        const rawContent = groqData.choices?.[0]?.message?.content
-
-        if (!rawContent) {
-          console.error(`Réponse vide de Groq pour produit ${produit.id}`)
-          errorCount++
-          continue
-        }
-
-        const cleaned = rawContent.replace(/```json|```/g, "").trim()
-        const description = JSON.parse(cleaned)
+        // La description est déjà parsée par analyzeImageWithGroq
+        const description = clientDescription
 
         // Mettre à jour le produit avec la description visuelle
         const { error: updateError } = await supabase
