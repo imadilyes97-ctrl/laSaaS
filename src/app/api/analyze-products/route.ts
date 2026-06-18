@@ -69,7 +69,7 @@ export async function GET(request: Request) {
         // Mettre à jour le produit avec la description visuelle
         const { error: updateError } = await supabase
           .from("produits")
-          .update({ description_visuelle: description })
+          .update({ description_visuelle: description } as any)
           .eq("id", produit.id)
 
         if (updateError) {
