@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { getSupabaseServiceClient } from "@/lib/supabase-service"
 import { analyzeImageWithGroq, findMatchingProduct } from "@/lib/groq-analyzer"
 import { ChatbotAnalyzeSchema } from "@/lib/schemas"
-import { ChatbotConfig } from "@/lib/types"
+import { ChatbotConfig, Product } from "@/lib/types"
 
 const supabase = getSupabaseServiceClient()
 
@@ -45,6 +45,7 @@ export async function POST(request: Request) {
       .eq("actif", true)
       .gt("stock", 0)
       .order("nom")
+      .returns<Product[]>()
 
     if (!produits || produits.length === 0) {
       return NextResponse.json({ trouve: false, error: "Aucun produit disponible" })
