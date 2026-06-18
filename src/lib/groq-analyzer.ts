@@ -5,6 +5,7 @@
 
 import { GroqCache } from "./cache"
 import { fetchWithTimeout } from "./fetch-with-timeout"
+import { Product } from "./types"
 
 export async function analyzeImageWithGroq(imageUrl: string) {
   console.log('🔍 Analyse Groq pour:', imageUrl)
@@ -113,6 +114,7 @@ export async function findMatchingProduct(
       .gt("stock", 0)
       .order("nom")
       .range(offset, offset + pageSize - 1)
+      .returns<Product[]>()
 
     if (error) {
       console.error('❌ Erreur Supabase:', error)
