@@ -107,7 +107,7 @@ export async function POST(request: Request) {
       .filter(Boolean)
 
     for (const name of productNames) {
-      await supabase.rpc("decrement_stock", {
+      await (supabase.rpc as any)("decrement_stock", {
         p_user_id: config.user_id,
         p_product_name: name,
       })
