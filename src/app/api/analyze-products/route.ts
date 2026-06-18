@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { getSupabaseServiceClient } from "@/lib/supabase-service"
 import { analyzeImageWithGroq } from "@/lib/groq-analyzer"
+import { ChatbotConfig } from "@/lib/types"
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
     .select('user_id')
     .eq('secret_token', token)
     .eq('actif', true)
-    .single()
+    .single<ChatbotConfig>()
 
   if (configError || !config) {
     console.log("Token invalide ou config introuvable:", configError?.message)

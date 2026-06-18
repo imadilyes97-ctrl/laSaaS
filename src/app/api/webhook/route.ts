@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getSupabaseServiceClient } from "@/lib/supabase-service"
 import { analyzeImageWithGroq, findMatchingProduct } from "@/lib/groq-analyzer"
 import { WebhookPayloadSchema } from "@/lib/schemas"
+import { ChatbotConfig } from "@/lib/types"
 
 const supabase = getSupabaseServiceClient()
 
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
       .select("user_id")
       .eq("secret_token", token)
       .eq("actif", true)
-      .single()
+      .single<ChatbotConfig>()
 
     if (configError || !config) {
       console.error('❌ Erreur config:', configError?.message)

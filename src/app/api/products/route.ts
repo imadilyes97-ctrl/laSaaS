@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { getSupabaseServiceClient } from "@/lib/supabase-service"
+import { ChatbotConfig } from "@/lib/types"
 
 const supabase = getSupabaseServiceClient()
 
@@ -17,7 +18,7 @@ export async function GET(request: Request) {
       .select("user_id, nom_chatbot, message_bienvenue, langue")
       .eq("secret_token", token)
       .eq("actif", true)
-      .single()
+      .single<ChatbotConfig>()
 
     if (configError || !config) {
       return NextResponse.json({ error: "Token invalide" }, { status: 401 })
