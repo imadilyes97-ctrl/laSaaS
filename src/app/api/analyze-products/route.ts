@@ -34,8 +34,7 @@ export async function GET(request: Request) {
       .select("*")
       .eq("user_id", config.user_id)
       .not("photo_url", "is", null)
-      .not("photo_url", "eq", "")
-      .returns<Product[]>()
+      .not("photo_url", "eq", "") as { data: Product[], error: any }
 
     if (error) {
       console.error("Erreur lors de la récupération des produits:", error)
