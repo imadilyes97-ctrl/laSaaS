@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { Product } from "@/lib/types"
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 
@@ -68,6 +69,7 @@ export async function GET() {
       .not("photo_url", "is", null)
       .not("photo_url", "eq", "")
       .limit(10)
+      .returns<Product[]>()
 
     if (!produits?.length) {
       results.push({
