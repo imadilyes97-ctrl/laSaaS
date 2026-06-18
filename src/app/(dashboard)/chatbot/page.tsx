@@ -42,6 +42,7 @@ export default function ChatbotPage() {
   const [testOpen, setTestOpen] = useState(false)
   const [testMessages, setTestMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([])
   const [testInput, setTestInput] = useState("")
+  const [testLoading, setTestLoading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const testEndRef = useRef<HTMLDivElement>(null)
 
@@ -50,6 +51,14 @@ export default function ChatbotPage() {
   const [langue, setLangue] = useState("FR")
   const [photoUrl, setPhotoUrl] = useState("")
   const [previewUrl, setPreviewUrl] = useState("")
+
+  const [promptMode, setPromptMode] = useState<"guided" | "libre">("guided")
+  const [prompt_role, setPromptRole] = useState("")
+  const [prompt_ton, setPromptTon] = useState("professionnel")
+  const [prompt_regles, setPromptRegles] = useState("")
+  const [prompt_langue, setPromptLangue] = useState("fr")
+  const [prompt_libre, setPromptLibre] = useState("")
+  const [prompt_final, setPromptFinal] = useState("")
 
   useEffect(() => {
     testEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -97,6 +106,13 @@ export default function ChatbotPage() {
         setMessageBienvenue(cfg.message_bienvenue)
         setLangue(cfg.langue)
         setPhotoUrl(cfg.photo_profil_url || "")
+        setPromptRole(cfg.prompt_role || "")
+        setPromptTon(cfg.prompt_ton || "professionnel")
+        setPromptRegles(cfg.prompt_regles || "")
+        setPromptLangue(cfg.prompt_langue || "fr")
+        setPromptLibre(cfg.prompt_libre || "")
+        setPromptFinal(cfg.prompt_final || "")
+        setPromptMode(cfg.prompt_final && !cfg.prompt_role ? "libre" : "guided")
       } else {
         const { data: newCfg, error: insertError } = await supabase
           .from("config_chatbot")
@@ -106,6 +122,8 @@ export default function ChatbotPage() {
             message_bienvenue: "Bonjour ! Je suis Yasmine, votre assistante virtuelle. Comment puis-je vous aider aujourd'hui ?",
             langue: "FR",
             actif: true,
+            prompt_ton: "professionnel",
+            prompt_langue: "fr",
           })
           .select()
           .single()
@@ -123,6 +141,8 @@ export default function ChatbotPage() {
         setMessageBienvenue(newCfg.message_bienvenue)
         setLangue(newCfg.langue)
         setPhotoUrl(newCfg.photo_profil_url || "")
+        setPromptTon(newCfg.prompt_ton || "professionnel")
+        setPromptLangue(newCfg.prompt_langue || "fr")
       }
 
       const today = startOfDay(new Date()).toISOString()
@@ -268,6 +288,12 @@ export default function ChatbotPage() {
         message_bienvenue,
         langue,
         photo_profil_url: photoUrl,
+        prompt_libre,
+        prompt_role,
+        prompt_ton,
+        prompt_regles,
+        prompt_langue,
+        prompt_final,
       })
       .eq("id", config.id)
 
@@ -303,6 +329,12 @@ export default function ChatbotPage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const generatePromptFinal = () => {
+    const generated = `Tu es ${prompt_role || nom_chatbot}. Ton de communication : ${prompt_ton}. Langue : ${prompt_langue}. Règles à respecter : ${prompt_regles}. Tu connais tous les produits disponibles dans la boutique et tu aides les clients à commander.`
+    setPromptFinal(generated)
+    return generated
+  }
+
   const toggleActif = async () => {
     if (!config) return
     const supabase = createClient()
@@ -314,16 +346,37 @@ export default function ChatbotPage() {
     setConfig((prev) => prev ? { ...prev, actif: !prev.actif } : null)
   }
 
-  const handleTestSend = () => {
-    if (!testInput.trim()) return
+  const handleTestSend = async () => {
+    if (!testInput.trim() || testLoading) return
     const userMsg = { role: "user" as const, content: testInput }
-    setTestMessages((prev) => [...prev, userMsg])
+    const updatedMessages = [...testMessages, userMsg]
+    setTestMessages(updatedMessages)
     setTestInput("")
+    setTestLoading(true)
 
-    setTimeout(() => {
-      const botMsg = { role: "assistant" as const, content: `Bonjour ! Je suis ${nom_chatbot}. Votre message a bien été reçu. Un conseiller vous répondra sous peu.` }
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+
+      const resp = await fetch("/api/chat-test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: userMsg.content,
+          userId: user?.id,
+          conversationHistory: testMessages,
+        }),
+      })
+
+      const data = await resp.json()
+      const botMsg = { role: "assistant" as const, content: data.reply || "Désolée, je n'ai pas pu répondre." }
       setTestMessages((prev) => [...prev, botMsg])
-    }, 1000)
+    } catch {
+      const botMsg = { role: "assistant" as const, content: "Erreur de connexion. Veuillez réessayer." }
+      setTestMessages((prev) => [...prev, botMsg])
+    } finally {
+      setTestLoading(false)
+    }
   }
 
   if (loading) {
@@ -590,6 +643,107 @@ export default function ChatbotPage() {
       </div>
 
       <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bot className="h-5 w-5" />
+            Personnalité & Comportement
+          </CardTitle>
+          <CardDescription>
+            Définissez la personnalité et les règles de votre chatbot
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-2 rounded-lg border p-1">
+            <button
+              onClick={() => setPromptMode("guided")}
+              className={`flex-1 px-3 py-2 text-sm rounded-md transition-colors ${promptMode === "guided" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+            >
+              Formulaire guidé
+            </button>
+            <button
+              onClick={() => setPromptMode("libre")}
+              className={`flex-1 px-3 py-2 text-sm rounded-md transition-colors ${promptMode === "libre" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+            >
+              Prompt libre
+            </button>
+          </div>
+
+          {promptMode === "guided" ? (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>🎭 Rôle du chatbot</Label>
+                <Input
+                  value={prompt_role}
+                  onChange={(e) => setPromptRole(e.target.value)}
+                  placeholder={`Ex: "Tu es ${nom_chatbot}, conseillère commerciale pour une boutique de mode"`}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>🗣️ Ton de communication</Label>
+                <Select value={prompt_ton} onValueChange={setPromptTon}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="professionnel">Professionnel</SelectItem>
+                    <SelectItem value="amical">Amical</SelectItem>
+                    <SelectItem value="décontracté">Décontracté</SelectItem>
+                    <SelectItem value="formel">Formel</SelectItem>
+                    <SelectItem value="humoristique">Humoristique</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>🌍 Langue principale</Label>
+                <Select value={prompt_langue} onValueChange={setPromptLangue}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fr">Français</SelectItem>
+                    <SelectItem value="ar">Arabe</SelectItem>
+                    <SelectItem value="en">Anglais</SelectItem>
+                    <SelectItem value="darija">Darija</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>📋 Règles importantes</Label>
+                <textarea
+                  value={prompt_regles}
+                  onChange={(e) => setPromptRegles(e.target.value)}
+                  placeholder="Ex: Ne jamais donner de prix sans vérifier le stock. Toujours demander le nom du client en premier."
+                  className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+              </div>
+              <Button onClick={generatePromptFinal} variant="outline" className="w-full gap-2">
+                Générer le prompt final
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label>✍️ Prompt système personnalisé</Label>
+              <textarea
+                value={prompt_libre}
+                onChange={(e) => { setPromptLibre(e.target.value); setPromptFinal(e.target.value) }}
+                placeholder={`Ex: "Tu es Sarah, assistante virtuelle de la boutique Élégance. Tu parles en français avec un ton chaleureux..."`}
+                className="flex min-h-[160px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+          )}
+
+          {prompt_final && (
+            <div className="space-y-2">
+              <Label>Aperçu du prompt final</Label>
+              <div className="rounded-lg bg-[#0a0f1a] border border-cyan-500/30 p-3 font-mono text-xs text-cyan-300 whitespace-pre-wrap max-h-40 overflow-y-auto">
+                {prompt_final}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
@@ -634,39 +788,60 @@ export default function ChatbotPage() {
       </Card>
 
       <Dialog open={testOpen} onOpenChange={setTestOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm bg-cyber-bgCard border-cyber-cyan/30">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Bot className="h-5 w-5" />
+            <DialogTitle className="flex items-center gap-2 text-white">
+              <Bot className="h-5 w-5 text-cyber-cyan" />
               Tester {nom_chatbot}
             </DialogTitle>
           </DialogHeader>
-          <div className="h-64 overflow-y-auto space-y-3 border rounded-lg p-3 bg-muted/30">
+          <div className="h-72 overflow-y-auto space-y-3 border border-cyber-border rounded-lg p-3 bg-cyber-bgSecond">
             {testMessages.length === 0 && (
               <div className="flex items-start gap-2">
-                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                  <Bot className="h-3.5 w-3.5 text-primary" />
+                <div className="w-6 h-6 rounded-full bg-cyber-cyan/20 flex items-center justify-center shrink-0 mt-0.5">
+                  <Bot className="h-3.5 w-3.5 text-cyber-cyan" />
                 </div>
-                <div className="bg-background rounded-lg p-2 text-sm text-muted-foreground">
+                <div className="bg-cyber-bgCard text-white rounded-lg p-2 text-sm">
                   {message_bienvenue || `Bonjour ! Je suis ${nom_chatbot}. Comment puis-je vous aider ?`}
                 </div>
               </div>
             )}
             {testMessages.map((msg, i) => (
               <div key={i} className={`flex items-start gap-2 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${msg.role === "user" ? "bg-primary/10" : "bg-primary/10"}`}>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${msg.role === "user" ? "bg-cyber-cyan/20" : "bg-cyber-cyan/20"}`}>
                   {msg.role === "user" ? (
-                    <User className="h-3.5 w-3.5 text-primary" />
+                    <User className="h-3.5 w-3.5 text-cyber-cyan" />
                   ) : (
-                    <Bot className="h-3.5 w-3.5 text-primary" />
+                    <Bot className="h-3.5 w-3.5 text-cyber-cyan" />
                   )}
                 </div>
-                <div className={`rounded-lg p-2 text-sm max-w-[80%] ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-background"}`}>
+                <div className={`rounded-lg p-2 text-sm max-w-[80%] ${msg.role === "user" ? "bg-cyber-cyan text-black" : "bg-cyber-bgCard text-white"}`}>
                   {msg.content}
                 </div>
               </div>
             ))}
+            {testLoading && (
+              <div className="flex items-start gap-2">
+                <div className="w-6 h-6 rounded-full bg-cyber-cyan/20 flex items-center justify-center shrink-0 mt-0.5">
+                  <Bot className="h-3.5 w-3.5 text-cyber-cyan" />
+                </div>
+                <div className="bg-cyber-bgCard text-cyber-textSecondary rounded-lg p-2 text-sm italic">
+                  En train d&apos;écrire...
+                </div>
+              </div>
+            )}
             <div ref={testEndRef} />
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setTestMessages([])}
+              className="text-xs text-cyber-textSecondary"
+            >
+              <RefreshCw className="h-3 w-3 mr-1" />
+              Reset
+            </Button>
           </div>
           <form
             onSubmit={(e) => { e.preventDefault(); handleTestSend() }}
@@ -676,9 +851,10 @@ export default function ChatbotPage() {
               value={testInput}
               onChange={(e) => setTestInput(e.target.value)}
               placeholder="Écrivez un message..."
+              className="bg-cyber-bgSecond border-cyber-border text-white"
             />
-            <Button type="submit" size="icon" disabled={!testInput.trim()}>
-              <Send className="h-4 w-4" />
+            <Button type="submit" size="icon" disabled={!testInput.trim() || testLoading}>
+              {testLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
           </form>
         </DialogContent>

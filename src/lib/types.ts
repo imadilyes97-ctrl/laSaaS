@@ -23,6 +23,12 @@ export type ChatbotConfig = {
   photo_profil_url: string
   actif: boolean
   secret_token: string
+  prompt_libre: string
+  prompt_role: string
+  prompt_ton: string
+  prompt_regles: string
+  prompt_langue: string
+  prompt_final: string
   created_at: string
 }
 

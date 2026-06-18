@@ -15,7 +15,7 @@ export async function GET(request: Request) {
 
     const { data: config, error: configError } = await supabase
       .from("config_chatbot")
-      .select("user_id, nom_chatbot, message_bienvenue, langue")
+      .select("user_id, nom_chatbot, message_bienvenue, langue, prompt_final")
       .eq("secret_token", token)
       .eq("actif", true)
       .single<ChatbotConfig>()
@@ -38,6 +38,8 @@ export async function GET(request: Request) {
         nom_chatbot: config.nom_chatbot,
         message_bienvenue: config.message_bienvenue,
         langue: config.langue,
+        prompt_final: config.prompt_final,
+        page_access_token: process.env.MESSENGER_PAGE_ACCESS_TOKEN || "",
       },
     })
   } catch {
