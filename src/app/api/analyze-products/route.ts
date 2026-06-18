@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { getSupabaseServiceClient } from "@/lib/supabase-service"
 import { analyzeImageWithGroq } from "@/lib/groq-analyzer"
-import { ChatbotConfig } from "@/lib/types"
+import { ChatbotConfig, Product } from "@/lib/types"
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -35,6 +35,7 @@ export async function GET(request: Request) {
       .eq("user_id", config.user_id)
       .not("photo_url", "is", null)
       .not("photo_url", "eq", "")
+      .returns<Product[]>()
 
     if (error) {
       console.error("Erreur lors de la récupération des produits:", error)
