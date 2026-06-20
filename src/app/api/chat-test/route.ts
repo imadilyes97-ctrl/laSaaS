@@ -6,11 +6,13 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+const OPENCODE_API = "https://opencode.ai/zen/v1/chat/completions"
+
 export async function POST(request: Request) {
   try {
     const { message, userId, conversationHistory } = await request.json()
 
-    console.log("🤖 Chat test - message reçu:", message?.slice(0, 50))
+    console.log("🤖 Chat test - message reçu:", message?.slice(0, 80))
 
     const { data: config } = await supabase
       .from('config_chatbot')
@@ -25,10 +27,10 @@ export async function POST(request: Request) {
       .eq('actif', true)
       .gt('stock', 0)
 
-    if (!process.env.DEEPSEEK_API_KEY) {
-      console.error("❌ DEEPSEEK_API_KEY manquante")
+    if (!process.env.OPENCODE_API_KEY) {
+      console.error("❌ OPENCODE_API_KEY manquante")
       return NextResponse.json(
-        { reply: "Je ne peux pas répondre — la clé API DeepSeek n'est pas configurée. Ajoutez DEEPSEEK_API_KEY dans les variables d'environnement." },
+        { reply: "Je ne peux pas répondre — la clé API OpenCode n'est pas configurée." },
         { status: 200 }
       )
     }
@@ -39,16 +41,16 @@ export async function POST(request: Request) {
       ? `\n\nProduits disponibles :\n${produits.map((p: any) => `- ${p.nom} : ${p.prix} DZD | Tailles: ${p.tailles?.join(',')} | Couleurs: ${p.couleurs?.join(',')}`).join('\n')}`
       : '\n\nAucun produit disponible pour le moment.'
 
-    console.log("🔑 Appel DeepSeek API...")
+    console.log("🔑 Appel OpenCode API...")
 
-    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+    const response = await fetch(OPENCODE_API, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+        'Authorization': `Bearer ${process.env.OPENCODE_API_KEY}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: 'nemotron-3-ultra-free',
         messages: [
           {
             role: 'system',
@@ -64,7 +66,7 @@ export async function POST(request: Request) {
 
     if (!response.ok) {
       const errText = await response.text()
-      console.error(`❌ DeepSeek API error (${response.status}):`, errText.slice(0, 500))
+      console.error(`❌ OpenCode API error (${response.status}):`, errText.slice(0, 500))
       return NextResponse.json(
         {
           reply: `Désolée, je n'ai pas pu répondre. (Erreur API: ${response.status})`,
@@ -77,7 +79,7 @@ export async function POST(request: Request) {
     const data = await response.json()
     const reply = data.choices?.[0]?.message?.content || 'Désolée, je n\'ai pas pu répondre.'
 
-    console.log("✅ DeepSeek réponse reçue:", reply.slice(0, 80))
+    console.log("✅ Réponse reçue:", reply.slice(0, 80))
 
     return NextResponse.json({ reply })
   } catch (error) {
