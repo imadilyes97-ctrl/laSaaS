@@ -59,6 +59,8 @@ export default function ChatbotPage() {
   const [prompt_langue, setPromptLangue] = useState("fr")
   const [prompt_libre, setPromptLibre] = useState("")
   const [prompt_final, setPromptFinal] = useState("")
+  const [savingPersonality, setSavingPersonality] = useState(false)
+  const [personalitySaved, setPersonalitySaved] = useState(false)
 
   useEffect(() => {
     testEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -330,9 +332,51 @@ export default function ChatbotPage() {
   }
 
   const generatePromptFinal = () => {
-    const generated = `Tu es ${prompt_role || nom_chatbot}. Ton de communication : ${prompt_ton}. Langue : ${prompt_langue}. Règles à respecter : ${prompt_regles}. Tu connais tous les produits disponibles dans la boutique et tu aides les clients à commander.`
+    if (promptMode === "libre") {
+      setPromptFinal(prompt_libre)
+      return prompt_libre
+    }
+
+    const generated = `Tu es ${prompt_role || nom_chatbot}.
+Ton de communication : ${prompt_ton}.
+Langue principale : ${prompt_langue}.
+Règles importantes : ${prompt_regles}.
+Tu connais tous les produits disponibles et tu aides les clients à commander.
+Réponds toujours de manière ${prompt_ton} et dans la langue ${prompt_langue}.`
     setPromptFinal(generated)
     return generated
+  }
+
+  const handleSavePersonality = async () => {
+    if (!config) return
+    setSavingPersonality(true)
+
+    const promptFinal = generatePromptFinal()
+
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      setSavingPersonality(false)
+      return
+    }
+
+    const { error } = await supabase
+      .from("config_chatbot")
+      .update({
+        prompt_libre,
+        prompt_role,
+        prompt_ton,
+        prompt_regles,
+        prompt_langue,
+        prompt_final: promptFinal,
+      })
+      .eq("id", config.id)
+
+    if (!error) {
+      setPersonalitySaved(true)
+      setTimeout(() => setPersonalitySaved(false), 2000)
+    }
+    setSavingPersonality(false)
   }
 
   const toggleActif = async () => {
@@ -368,9 +412,49 @@ export default function ChatbotPage() {
         }),
       })
 
-      const data = await resp.json()
-      const botMsg = { role: "assistant" as const, content: data.reply || "Désolée, je n'ai pas pu répondre." }
-      setTestMessages((prev) => [...prev, botMsg])
+      // Vérifier si la réponse est un flux streaming
+      const contentType = resp.headers.get("Content-Type")
+
+      if (contentType?.includes("text/event-stream")) {
+        // Mode streaming : afficher la réponse token par token
+        const reader = resp.body!.getReader()
+        const decoder = new TextDecoder()
+        let accumulated = ""
+
+        // Ajouter un message assistant vide qui sera rempli progressivement
+        setTestMessages((prev) => [...prev, { role: "assistant", content: "" }])
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          const chunk = decoder.decode(value)
+          const lines = chunk.split("\n").filter((line) => line.trim())
+
+          for (const line of lines) {
+            try {
+              const parsed = JSON.parse(line)
+              accumulated += parsed.content || ""
+            } catch {
+              // Ignorer les lignes qui ne sont pas du JSON
+            }
+          }
+
+          // Mettre à jour le dernier message avec le contenu accumulé
+          setTestMessages((prev) => {
+            const updated = [...prev]
+            if (updated.length > 0) {
+              updated[updated.length - 1] = { role: "assistant", content: accumulated }
+            }
+            return updated
+          })
+        }
+      } else {
+        // Mode non-streaming (fallback)
+        const data = await resp.json()
+        const botMsg = { role: "assistant" as const, content: data.reply || "Désolée, je n'ai pas pu répondre." }
+        setTestMessages((prev) => [...prev, botMsg])
+      }
     } catch {
       const botMsg = { role: "assistant" as const, content: "Erreur de connexion. Veuillez réessayer." }
       setTestMessages((prev) => [...prev, botMsg])
@@ -716,19 +800,39 @@ export default function ChatbotPage() {
                   className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
               </div>
-              <Button onClick={generatePromptFinal} variant="outline" className="w-full gap-2">
-                Générer le prompt final
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={generatePromptFinal} variant="outline" className="flex-1 gap-2">
+                  Générer le prompt final
+                </Button>
+                <Button onClick={handleSavePersonality} className="flex-1 gap-2" disabled={savingPersonality}>
+                  {savingPersonality ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : personalitySaved ? (
+                    <Check className="h-4 w-4" />
+                  ) : null}
+                  {savingPersonality ? "Enregistrement..." : personalitySaved ? "Enregistré !" : "Enregistrer la config"}
+                </Button>
+              </div>
             </div>
           ) : (
-            <div className="space-y-2">
-              <Label>✍️ Prompt système personnalisé</Label>
-              <textarea
-                value={prompt_libre}
-                onChange={(e) => { setPromptLibre(e.target.value); setPromptFinal(e.target.value) }}
-                placeholder={`Ex: "Tu es Sarah, assistante virtuelle de la boutique Élégance. Tu parles en français avec un ton chaleureux..."`}
-                className="flex min-h-[160px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>✍️ Prompt système personnalisé</Label>
+                <textarea
+                  value={prompt_libre}
+                  onChange={(e) => { setPromptLibre(e.target.value); setPromptFinal(e.target.value) }}
+                  placeholder={`Ex: "Tu es Sarah, assistante virtuelle de la boutique Élégance. Tu parles en français avec un ton chaleureux..."`}
+                  className="flex min-h-[160px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+              </div>
+              <Button onClick={handleSavePersonality} className="w-full gap-2" disabled={savingPersonality}>
+                {savingPersonality ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : personalitySaved ? (
+                  <Check className="h-4 w-4" />
+                ) : null}
+                {savingPersonality ? "Enregistrement..." : personalitySaved ? "Enregistré !" : "Enregistrer la config"}
+              </Button>
             </div>
           )}
 
