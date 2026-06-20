@@ -40,7 +40,8 @@ export default function ProduitsPage() {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadError, setUploadError] = useState("")
   const [previewUrl, setPreviewUrl] = useState("")
-  const [photoItems, setPhotoItems] = useState<{ id: string; previewUrl: string; uploadedUrl: string; uploading: boolean }[]>([])
+  const [photoItemsProduit, setPhotoItemsProduit] = useState<{ id: string; previewUrl: string; uploadedUrl: string; uploading: boolean }[]>([])
+  const [photoItemsReelles, setPhotoItemsReelles] = useState<{ id: string; previewUrl: string; uploadedUrl: string; uploading: boolean }[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null)
   const [saving, setSaving] = useState(false)
@@ -48,7 +49,8 @@ export default function ProduitsPage() {
   const [analysing, setAnalysing] = useState(false)
   const [descriptionVisuelle, setDescriptionVisuelle] = useState<Record<string, unknown> | null>(null)
 
-  const fileRef = useRef<HTMLInputElement>(null)
+  const fileRefProduit = useRef<HTMLInputElement>(null)
+  const fileRefReelles = useRef<HTMLInputElement>(null)
 
   const defaultForm = {
     nom: "",
@@ -152,13 +154,9 @@ export default function ProduitsPage() {
     return urlData?.publicUrl || ""
   }
 
-  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    if (files.length === 0) return
-
+  const uploadFiles = async (files: File[], setItems: React.Dispatch<React.SetStateAction<typeof photoItemsProduit>>) => {
     setUploadError("")
 
-    // Valider tous les fichiers avant d'uploader
     for (const file of files) {
       const validationError = validateFile(file)
       if (validationError) {
@@ -167,7 +165,6 @@ export default function ProduitsPage() {
       }
     }
 
-    // Ajouter les previews immédiatement (optimiste)
     const newItems = files.map((file) => ({
       id: uuidv4(),
       file,
@@ -176,46 +173,37 @@ export default function ProduitsPage() {
       uploading: true,
     }))
 
-    setPhotoItems((prev) => [...prev, ...newItems.map((n) => ({ id: n.id, previewUrl: n.previewUrl, uploadedUrl: n.uploadedUrl, uploading: n.uploading }))])
+    setItems((prev) => [...prev, ...newItems.map((n) => ({ id: n.id, previewUrl: n.previewUrl, uploadedUrl: n.uploadedUrl, uploading: n.uploading }))])
 
-    // Upload chaque fichier séquentiellement
     for (let i = 0; i < newItems.length; i++) {
       const item = newItems[i]
       const url = await uploadImage(item.file)
-      setPhotoItems((prev) => {
-        const updated = prev.map((p) =>
+      setItems((prev) =>
+        prev.map((p) =>
           p.id === item.id ? { ...p, uploadedUrl: url || p.previewUrl, uploading: false } : p
         )
-        // Mettre à jour photo_url avec la première photo uploadée
-        if (i === 0 && url) {
-          setForm((f) => ({ ...f, photo_url: url }))
-        }
-        return updated
-      })
+      )
       URL.revokeObjectURL(item.previewUrl)
     }
   }
 
-  const removePhoto = (id: string) => {
-    setPhotoItems((prev) => {
-      const item = prev.find((p) => p.id === id)
-      if (item?.previewUrl) URL.revokeObjectURL(item.previewUrl)
-      const remaining = prev.filter((p) => p.id !== id)
-      // Si on supprime la première photo, mettre à jour photo_url avec la suivante
-      if (item && prev.indexOf(item) === 0) {
-        const firstRemaining = remaining.find((p) => p.uploadedUrl)
-        setForm((f) => ({ ...f, photo_url: firstRemaining?.uploadedUrl || "" }))
-      }
-      return remaining
-    })
+  const handleProduitSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+    uploadFiles(files, setPhotoItemsProduit)
   }
 
-  const reorderPhotos = (fromIndex: number, toIndex: number) => {
-    setPhotoItems((prev) => {
-      const updated = [...prev]
-      const [moved] = updated.splice(fromIndex, 1)
-      updated.splice(toIndex, 0, moved)
-      return updated
+  const handleReellesSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+    uploadFiles(files, setPhotoItemsReelles)
+  }
+
+  const removePhoto = (id: string, setItems: React.Dispatch<React.SetStateAction<typeof photoItemsProduit>>) => {
+    setItems((prev) => {
+      const item = prev.find((p) => p.id === id)
+      if (item?.previewUrl) URL.revokeObjectURL(item.previewUrl)
+      return prev.filter((p) => p.id !== id)
     })
   }
 
@@ -225,11 +213,10 @@ export default function ProduitsPage() {
         URL.revokeObjectURL(previewUrl)
         setPreviewUrl("")
       }
-      // Nettoyer tous les previewUrl des photos
-      photoItems.forEach((item) => {
-        if (item.previewUrl) URL.revokeObjectURL(item.previewUrl)
-      })
-      setPhotoItems([])
+      photoItemsProduit.forEach((item) => { if (item.previewUrl) URL.revokeObjectURL(item.previewUrl) })
+      photoItemsReelles.forEach((item) => { if (item.previewUrl) URL.revokeObjectURL(item.previewUrl) })
+      setPhotoItemsProduit([])
+      setPhotoItemsReelles([])
       setUploadError("")
       setUploadProgress(0)
       setSaveError("")
@@ -259,8 +246,11 @@ export default function ProduitsPage() {
 
     const descVisuelle = descriptionVisuelle || (editProduct?.description_visuelle) || {}
 
-    // Collecter toutes les URLs uploadées
-    const uploadedUrls = photoItems
+    // Collecter les URLs par catégorie
+    const uploadedProduit = photoItemsProduit
+      .map((item) => item.uploadedUrl)
+      .filter((url) => url && url.startsWith("http"))
+    const uploadedReelles = photoItemsReelles
       .map((item) => item.uploadedUrl)
       .filter((url) => url && url.startsWith("http"))
 
@@ -268,8 +258,10 @@ export default function ProduitsPage() {
       user_id: user.id,
       nom: form.nom,
       description: form.description,
-      photo_url: uploadedUrls[0] || form.photo_url || "",
-      photos: uploadedUrls.length > 0 ? uploadedUrls : [form.photo_url].filter(Boolean),
+      photo_url: uploadedProduit[0] || form.photo_url || "",
+      photos: uploadedProduit.length > 0 ? uploadedProduit : [form.photo_url].filter(Boolean),
+      photos_produit: uploadedProduit.length > 0 ? uploadedProduit : (editProduct?.photos_produit || []),
+      photos_reelles: uploadedReelles.length > 0 ? uploadedReelles : (editProduct?.photos_reelles || []),
       prix: form.prix,
       stock: form.stock,
       tailles: taillesArr,
@@ -312,16 +304,16 @@ export default function ProduitsPage() {
       couleurs: (p.couleurs || []).join(", "),
       photo_url: p.photo_url,
     })
-    // Charger les photos existantes
-    const existingPhotos = (p.photos || [])
-      .filter((url: string) => url)
-      .map((url: string) => ({
+    // Charger les photos existantes par catégorie
+    const mapPhotos = (urls: string[]) =>
+      (urls || []).filter(Boolean).map((url: string) => ({
         id: uuidv4(),
         previewUrl: url,
         uploadedUrl: url,
         uploading: false,
       }))
-    setPhotoItems(existingPhotos)
+    setPhotoItemsProduit(mapPhotos(p.photos_produit || p.photos || []))
+    setPhotoItemsReelles(mapPhotos(p.photos_reelles || []))
     setDescriptionVisuelle(p.description_visuelle || null)
     setOpen(true)
   }
@@ -381,7 +373,7 @@ export default function ProduitsPage() {
           </div>
           <Dialog open={open} onOpenChange={handleDialogClose}>
               <DialogTrigger asChild>
-                <Button onClick={() => { setEditProduct(null); setForm(defaultForm); setDescriptionVisuelle(null); setPhotoItems([]) }}>
+                <Button onClick={() => { setEditProduct(null); setForm(defaultForm); setDescriptionVisuelle(null); setPhotoItemsProduit([]); setPhotoItemsReelles([]) }}>
                 <Plus className="h-4 w-4 mr-2" />
                 Ajouter
               </Button>
@@ -393,91 +385,109 @@ export default function ProduitsPage() {
                 </DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Photos du produit</Label>
+                {/* 📸 Section Photos officielles */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <ImageUp className="h-4 w-4 text-cyber-cyan" />
+                    <Label className="font-semibold">Photos officielles du produit</Label>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Photos sur fond blanc ou studio — Max 5 photos</p>
 
-                  {/* Galerie des photos */}
-                  {photoItems.length > 0 && (
-                    <div className="grid grid-cols-3 gap-2 mb-2">
-                      {photoItems.map((item, index) => (
-                        <div
-                          key={item.id}
-                          className="relative group aspect-square rounded-lg border bg-muted overflow-hidden"
-                        >
-                          <img
-                            src={item.uploadedUrl || item.previewUrl}
-                            alt={`Photo ${index + 1}`}
-                            className="w-full h-full object-cover"
-                          />
-                          {/* Overlay au survol */}
-                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-white hover:bg-white/20"
-                              onClick={() => removePhoto(item.id)}
-                            >
+                  {photoItemsProduit.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2">
+                      {photoItemsProduit.map((item, index) => (
+                        <div key={item.id} className="relative group aspect-square rounded-lg border bg-muted overflow-hidden">
+                          <img src={item.uploadedUrl || item.previewUrl} alt={`Officielle ${index + 1}`} className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/20" onClick={() => removePhoto(item.id, setPhotoItemsProduit)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
-                          {/* Badge upload en cours */}
                           {item.uploading && (
                             <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
                               <Loader2 className="h-5 w-5 animate-spin text-white" />
                             </div>
                           )}
-                          {/* Indicateur de position */}
-                          <div className="absolute top-1 left-1 bg-black/60 text-white text-xs rounded px-1.5 py-0.5">
-                            {index + 1}
-                          </div>
+                          <div className="absolute top-1 left-1 bg-black/60 text-white text-xs rounded px-1.5 py-0.5">{index + 1}</div>
                         </div>
                       ))}
-
-                      {/* Bouton ajouter dans la grille */}
-                      <button
-                        type="button"
-                        onClick={() => fileRef.current?.click()}
-                        className="aspect-square rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-cyber-cyan/50 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-cyber-cyan transition-colors"
-                      >
+                      <button type="button" onClick={() => fileRefProduit.current?.click()} className="aspect-square rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-cyber-cyan/50 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-cyber-cyan transition-colors">
                         <ImageUp className="h-5 w-5" />
                         <span className="text-xs">Ajouter</span>
                       </button>
                     </div>
                   )}
 
-                  {/* État vide : pas encore de photos */}
-                  {photoItems.length === 0 && (
-                    <div
-                      onClick={() => fileRef.current?.click()}
-                      className="flex items-center gap-4 p-4 rounded-lg border-2 border-dashed border-muted-foreground/30 cursor-pointer hover:border-cyber-cyan/50 transition-colors"
-                    >
-                      <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center shrink-0">
-                        <ImageUp className="h-6 w-6 text-muted-foreground" />
+                  {photoItemsProduit.length === 0 && (
+                    <div onClick={() => fileRefProduit.current?.click()} className="flex items-center gap-4 p-4 rounded-lg border-2 border-dashed border-muted-foreground/30 cursor-pointer hover:border-cyber-cyan/50 transition-colors">
+                      <div className="w-14 h-14 bg-muted rounded-lg flex items-center justify-center shrink-0">
+                        <ImageUp className="h-5 w-5 text-muted-foreground" />
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-sm font-medium">Ajouter des photos</span>
+                        <span className="text-sm font-medium">Ajouter des photos officielles</span>
                         <span className="text-xs text-muted-foreground">JPG, PNG, WEBP — max 5MB par photo</span>
                       </div>
                     </div>
                   )}
 
-                  <input
-                    ref={fileRef}
-                    type="file"
-                    multiple
-                    accept=".jpg,.jpeg,.png,.webp"
-                    className="hidden"
-                    onChange={handleImageSelect}
-                  />
-
-                  {uploadError && (
-                    <p className="text-sm text-destructive flex items-center gap-1 mt-1">
-                      <AlertCircle className="h-3 w-3 shrink-0" />
-                      {uploadError}
-                    </p>
-                  )}
+                  <input ref={fileRefProduit} type="file" multiple accept=".jpg,.jpeg,.png,.webp" className="hidden" onChange={handleProduitSelect} />
                 </div>
+
+                {/* 🤳 Section Photos réelles */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <ImageUp className="h-4 w-4 text-amber-400" />
+                    <Label className="font-semibold">Photos réelles <span className="text-xs font-normal text-muted-foreground">(optionnel)</span></Label>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Photos portées par des modèles ou en situation réelle — Max 5 photos</p>
+
+                  {photoItemsReelles.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2">
+                      {photoItemsReelles.map((item, index) => (
+                        <div key={item.id} className="relative group aspect-square rounded-lg border bg-muted overflow-hidden">
+                          <img src={item.uploadedUrl || item.previewUrl} alt={`Réelle ${index + 1}`} className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/20" onClick={() => removePhoto(item.id, setPhotoItemsReelles)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          {item.uploading && (
+                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                              <Loader2 className="h-5 w-5 animate-spin text-white" />
+                            </div>
+                          )}
+                          <div className="absolute top-1 left-1 bg-black/60 text-white text-xs rounded px-1.5 py-0.5">{index + 1}</div>
+                        </div>
+                      ))}
+                      <button type="button" onClick={() => fileRefReelles.current?.click()} className="aspect-square rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-cyber-cyan/50 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-cyber-cyan transition-colors">
+                        <ImageUp className="h-5 w-5" />
+                        <span className="text-xs">Ajouter</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {photoItemsReelles.length === 0 && (
+                    <div onClick={() => fileRefReelles.current?.click()} className="flex items-center gap-4 p-4 rounded-lg border-2 border-dashed border-muted-foreground/30 cursor-pointer hover:border-cyber-cyan/50 transition-colors">
+                      <div className="w-14 h-14 bg-muted rounded-lg flex items-center justify-center shrink-0">
+                        <ImageUp className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium">Ajouter des photos réelles (modèles)</span>
+                        <span className="text-xs text-muted-foreground">JPG, PNG, WEBP — max 5MB par photo</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <input ref={fileRefReelles} type="file" multiple accept=".jpg,.jpeg,.png,.webp" className="hidden" onChange={handleReellesSelect} />
+                </div>
+
+                {uploadError && (
+                  <p className="text-sm text-destructive flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3 shrink-0" />
+                    {uploadError}
+                  </p>
+                )}
+
                 <div className="space-y-2">
                   <Label htmlFor="nom">Nom du produit</Label>
                   <Input
@@ -577,27 +587,21 @@ export default function ProduitsPage() {
           <Card key={p.id} className={!p.actif ? "opacity-60" : ""}>
             <CardContent className="p-4">
               <div className="relative aspect-square bg-muted rounded-lg mb-3 overflow-hidden group">
-                {/* Images : afficher la première ou un fallback */}
-                {(p.photos?.length > 0 || p.photo_url) ? (
-                  <>
-                    <img
-                      src={p.photos?.[0] || p.photo_url}
-                      alt={p.nom}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none"
-                      }}
-                    />
-                    {/* Badge nombre de photos */}
-                    {(p.photos?.length || 1) > 1 && (
-                      <div className="absolute top-2 right-2 bg-black/60 text-white text-xs rounded-full px-2 py-0.5">
-                        1/{p.photos!.length}
-                      </div>
-                    )}
-                  </>
+                {(p.photos_produit?.length > 0 || p.photo_url) ? (
+                  <img
+                    src={p.photos_produit?.[0] || p.photo_url}
+                    alt={p.nom}
+                    className="w-full h-full object-cover"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }}
+                  />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <Package className="h-12 w-12 text-muted-foreground" />
+                  </div>
+                )}
+                {(p.photos_reelles?.length > 0) && (
+                  <div className="absolute bottom-2 right-2 bg-amber-500/80 text-white text-[10px] rounded-full px-2 py-0.5">
+                    📸 {p.photos_reelles.length} réelle{p.photos_reelles.length > 1 ? 's' : ''}
                   </div>
                 )}
               </div>
