@@ -60,7 +60,7 @@ export async function POST(request: Request) {
           { role: 'user', content: message }
         ],
         max_tokens: 500,
-        temperature: 0.7,
+        temperature: 0.2,
         stream: stream === true
       })
     })
@@ -82,29 +82,47 @@ export async function POST(request: Request) {
       const streamed = new ReadableStream({
         async start(controller) {
           const reader = response.body!.getReader()
+          let buffer = "" // Buffer pour les lignes SSE coupées
 
           while (true) {
             const { done, value } = await reader.read()
             if (done) {
+              // Traiter le dernier morceau restant dans le buffer
+              if (buffer.startsWith("data: ")) {
+                const data = buffer.slice(6)
+                if (data !== "[DONE]") {
+                  try {
+                    const parsed = JSON.parse(data)
+                    const content = parsed.choices?.[0]?.delta?.content || ""
+                    if (content) {
+                      controller.enqueue(encoder.encode(JSON.stringify({ content }) + "\n"))
+                    }
+                  } catch { /* Ignorer */ }
+                }
+              }
               controller.close()
               break
             }
 
-            const chunk = decoder.decode(value)
-            const lines = chunk.split('\n').filter(line => line.startsWith('data: '))
+            buffer += decoder.decode(value, { stream: true })
+            const lines = buffer.split("\n")
+            // Garder la dernière ligne (potentiellement incomplète) dans le buffer
+            buffer = lines.pop() || ""
 
             for (const line of lines) {
-              const data = line.slice(6)
-              if (data === '[DONE]') continue
+              const trimmed = line.trim()
+              if (!trimmed.startsWith("data: ")) continue
+              const data = trimmed.slice(6)
+              if (data === "[DONE]") continue
 
               try {
                 const parsed = JSON.parse(data)
-                const content = parsed.choices?.[0]?.delta?.content || ''
+                const content = parsed.choices?.[0]?.delta?.content || ""
                 if (content) {
-                  controller.enqueue(encoder.encode(JSON.stringify({ content }) + '\n'))
+                  controller.enqueue(encoder.encode(JSON.stringify({ content }) + "\n"))
                 }
               } catch {
-                // Ignorer les lignes non-JSON
+                // Ignorer les lignes SSE tronquées
               }
             }
           }

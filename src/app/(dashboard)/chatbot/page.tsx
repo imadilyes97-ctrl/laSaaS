@@ -419,6 +419,7 @@ Réponds toujours de manière ${prompt_ton} et dans la langue ${prompt_langue}.`
         const reader = resp.body!.getReader()
         const decoder = new TextDecoder()
         let accumulated = ""
+        let buffer = ""
 
         // Ajouter un message assistant vide qui sera rempli progressivement
         setTestMessages((prev) => [...prev, { role: "assistant", content: "" }])
@@ -427,15 +428,17 @@ Réponds toujours de manière ${prompt_ton} et dans la langue ${prompt_langue}.`
           const { done, value } = await reader.read()
           if (done) break
 
-          const chunk = decoder.decode(value)
-          const lines = chunk.split("\n").filter((line) => line.trim())
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split("\n")
+          buffer = lines.pop() || "" // garder la ligne incomplète
 
           for (const line of lines) {
+            if (!line.trim()) continue
             try {
               const parsed = JSON.parse(line)
               accumulated += parsed.content || ""
             } catch {
-              // Ignorer
+              // Ignorer les JSON incomplets
             }
           }
 
