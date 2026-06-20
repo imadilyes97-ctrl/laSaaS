@@ -10,7 +10,7 @@ const OPENCODE_API = "https://opencode.ai/zen/v1/chat/completions"
 
 export async function POST(request: Request) {
   try {
-    const { message, userId, conversationHistory } = await request.json()
+    const { message, userId, conversationHistory, stream } = await request.json()
 
     console.log("🤖 Chat test - message reçu:", message?.slice(0, 80))
 
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
       ? `\n\nProduits disponibles :\n${produits.map((p: any) => `- ${p.nom} : ${p.prix} DZD | Tailles: ${p.tailles?.join(',')} | Couleurs: ${p.couleurs?.join(',')}`).join('\n')}`
       : '\n\nAucun produit disponible pour le moment.'
 
-    console.log("🔑 Appel OpenCode API...")
+    console.log(`🔑 Appel OpenCode API (${stream ? 'streaming' : 'standard'})...`)
 
     const response = await fetch(OPENCODE_API, {
       method: 'POST',
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'nemotron-3-ultra-free',
+        model: 'north-mini-code-free',
         messages: [
           {
             role: 'system',
@@ -60,7 +60,8 @@ export async function POST(request: Request) {
           { role: 'user', content: message }
         ],
         max_tokens: 500,
-        temperature: 0.7
+        temperature: 0.7,
+        stream: stream === true
       })
     })
 
@@ -68,17 +69,60 @@ export async function POST(request: Request) {
       const errText = await response.text()
       console.error(`❌ OpenCode API error (${response.status}):`, errText.slice(0, 500))
       return NextResponse.json(
-        {
-          reply: `Désolée, je n'ai pas pu répondre. (Erreur API: ${response.status})`,
-          error: errText.slice(0, 500)
-        },
+        { reply: "Désolée, je n'ai pas pu répondre pour le moment." },
         { status: 200 }
       )
     }
 
+    // Mode streaming
+    if (stream === true) {
+      const encoder = new TextEncoder()
+      const decoder = new TextDecoder()
+
+      const streamed = new ReadableStream({
+        async start(controller) {
+          const reader = response.body!.getReader()
+
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) {
+              controller.close()
+              break
+            }
+
+            const chunk = decoder.decode(value)
+            const lines = chunk.split('\n').filter(line => line.startsWith('data: '))
+
+            for (const line of lines) {
+              const data = line.slice(6)
+              if (data === '[DONE]') continue
+
+              try {
+                const parsed = JSON.parse(data)
+                const content = parsed.choices?.[0]?.delta?.content || ''
+                if (content) {
+                  controller.enqueue(encoder.encode(JSON.stringify({ content }) + '\n'))
+                }
+              } catch {
+                // Ignorer les lignes non-JSON
+              }
+            }
+          }
+        }
+      })
+
+      return new Response(streamed, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        }
+      })
+    }
+
+    // Mode standard (non-streaming)
     const data = await response.json()
     const reply = data.choices?.[0]?.message?.content || 'Désolée, je n\'ai pas pu répondre.'
-
     console.log("✅ Réponse reçue:", reply.slice(0, 80))
 
     return NextResponse.json({ reply })
@@ -86,7 +130,7 @@ export async function POST(request: Request) {
     console.error('❌ Chat test error:', error)
     const errMsg = error instanceof Error ? error.message : String(error)
     return NextResponse.json(
-      { reply: `Erreur de connexion: ${errMsg}` },
+      { reply: `Erreur: ${errMsg.slice(0, 100)}` },
       { status: 200 }
     )
   }

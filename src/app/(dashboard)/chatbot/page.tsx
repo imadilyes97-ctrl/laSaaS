@@ -408,12 +408,51 @@ Réponds toujours de manière ${prompt_ton} et dans la langue ${prompt_langue}.`
           message: userMsg.content,
           userId: user?.id,
           conversationHistory: testMessages,
+          stream: true
         }),
       })
 
-      const data = await resp.json()
-      const botMsg = { role: "assistant" as const, content: data.reply || "Désolée, je n'ai pas pu répondre." }
-      setTestMessages((prev) => [...prev, botMsg])
+      const contentType = resp.headers.get("Content-Type")
+
+      if (contentType?.includes("text/event-stream")) {
+        // Mode streaming : afficher la réponse token par token
+        const reader = resp.body!.getReader()
+        const decoder = new TextDecoder()
+        let accumulated = ""
+
+        // Ajouter un message assistant vide qui sera rempli progressivement
+        setTestMessages((prev) => [...prev, { role: "assistant", content: "" }])
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          const chunk = decoder.decode(value)
+          const lines = chunk.split("\n").filter((line) => line.trim())
+
+          for (const line of lines) {
+            try {
+              const parsed = JSON.parse(line)
+              accumulated += parsed.content || ""
+            } catch {
+              // Ignorer
+            }
+          }
+
+          setTestMessages((prev) => {
+            const updated = [...prev]
+            if (updated.length > 0) {
+              updated[updated.length - 1] = { role: "assistant", content: accumulated }
+            }
+            return updated
+          })
+        }
+      } else {
+        // Fallback non-streaming
+        const data = await resp.json()
+        const botMsg = { role: "assistant" as const, content: data.reply || "Désolée, je n'ai pas pu répondre." }
+        setTestMessages((prev) => [...prev, botMsg])
+      }
     } catch {
       const botMsg = { role: "assistant" as const, content: "Erreur de connexion. Veuillez réessayer." }
       setTestMessages((prev) => [...prev, botMsg])
