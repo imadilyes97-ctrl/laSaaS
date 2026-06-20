@@ -23,7 +23,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Plus, Pencil, Trash2, ImageUp, Package, AlertTriangle, AlertCircle, Search, X, Loader2 } from "lucide-react"
+import { Plus, Pencil, Trash2, ImageUp, Package, AlertTriangle, AlertCircle, Search, X, Loader2, ChevronLeft, ChevronRight } from "lucide-react"
+import { v4 as uuidv4 } from "uuid"
 import type { Product } from "@/lib/types"
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
@@ -39,6 +40,7 @@ export default function ProduitsPage() {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadError, setUploadError] = useState("")
   const [previewUrl, setPreviewUrl] = useState("")
+  const [photoItems, setPhotoItems] = useState<{ id: string; previewUrl: string; uploadedUrl: string; uploading: boolean }[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null)
   const [saving, setSaving] = useState(false)
@@ -151,45 +153,70 @@ export default function ProduitsPage() {
   }
 
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    const validationError = validateFile(file)
-    if (validationError) {
-      setUploadError(validationError)
-      return
-    }
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
 
     setUploadError("")
 
-    const objectUrl = URL.createObjectURL(file)
-    setPreviewUrl(objectUrl)
-
-    const url = await uploadImage(file)
-    if (url) {
-      setForm((f) => ({ ...f, photo_url: url }))
-      setAnalysing(true)
-      setUploadProgress(0)
-      try {
-        const res = await fetch("/api/analyze-image", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ photoUrl: url }),
-        })
-        const data = await res.json()
-        if (data.description) {
-          setDescriptionVisuelle(data.description)
-        }
-      } catch {
-        console.error("Erreur analyse visuelle")
+    // Valider tous les fichiers avant d'uploader
+    for (const file of files) {
+      const validationError = validateFile(file)
+      if (validationError) {
+        setUploadError(validationError)
+        return
       }
-      setAnalysing(false)
-      setUploadProgress(100)
-      setTimeout(() => {
-        URL.revokeObjectURL(objectUrl)
-        setPreviewUrl("")
-      }, 100)
     }
+
+    // Ajouter les previews immédiatement (optimiste)
+    const newItems = files.map((file) => ({
+      id: uuidv4(),
+      file,
+      previewUrl: URL.createObjectURL(file),
+      uploadedUrl: "",
+      uploading: true,
+    }))
+
+    setPhotoItems((prev) => [...prev, ...newItems.map((n) => ({ id: n.id, previewUrl: n.previewUrl, uploadedUrl: n.uploadedUrl, uploading: n.uploading }))])
+
+    // Upload chaque fichier séquentiellement
+    for (let i = 0; i < newItems.length; i++) {
+      const item = newItems[i]
+      const url = await uploadImage(item.file)
+      setPhotoItems((prev) => {
+        const updated = prev.map((p) =>
+          p.id === item.id ? { ...p, uploadedUrl: url || p.previewUrl, uploading: false } : p
+        )
+        // Mettre à jour photo_url avec la première photo uploadée
+        if (i === 0 && url) {
+          setForm((f) => ({ ...f, photo_url: url }))
+        }
+        return updated
+      })
+      URL.revokeObjectURL(item.previewUrl)
+    }
+  }
+
+  const removePhoto = (id: string) => {
+    setPhotoItems((prev) => {
+      const item = prev.find((p) => p.id === id)
+      if (item?.previewUrl) URL.revokeObjectURL(item.previewUrl)
+      const remaining = prev.filter((p) => p.id !== id)
+      // Si on supprime la première photo, mettre à jour photo_url avec la suivante
+      if (item && prev.indexOf(item) === 0) {
+        const firstRemaining = remaining.find((p) => p.uploadedUrl)
+        setForm((f) => ({ ...f, photo_url: firstRemaining?.uploadedUrl || "" }))
+      }
+      return remaining
+    })
+  }
+
+  const reorderPhotos = (fromIndex: number, toIndex: number) => {
+    setPhotoItems((prev) => {
+      const updated = [...prev]
+      const [moved] = updated.splice(fromIndex, 1)
+      updated.splice(toIndex, 0, moved)
+      return updated
+    })
   }
 
   const handleDialogClose = (open: boolean) => {
@@ -198,6 +225,11 @@ export default function ProduitsPage() {
         URL.revokeObjectURL(previewUrl)
         setPreviewUrl("")
       }
+      // Nettoyer tous les previewUrl des photos
+      photoItems.forEach((item) => {
+        if (item.previewUrl) URL.revokeObjectURL(item.previewUrl)
+      })
+      setPhotoItems([])
       setUploadError("")
       setUploadProgress(0)
       setSaveError("")
@@ -227,11 +259,17 @@ export default function ProduitsPage() {
 
     const descVisuelle = descriptionVisuelle || (editProduct?.description_visuelle) || {}
 
+    // Collecter toutes les URLs uploadées
+    const uploadedUrls = photoItems
+      .map((item) => item.uploadedUrl)
+      .filter((url) => url && url.startsWith("http"))
+
     const payload = {
       user_id: user.id,
       nom: form.nom,
       description: form.description,
-      photo_url: form.photo_url,
+      photo_url: uploadedUrls[0] || form.photo_url || "",
+      photos: uploadedUrls.length > 0 ? uploadedUrls : [form.photo_url].filter(Boolean),
       prix: form.prix,
       stock: form.stock,
       tailles: taillesArr,
@@ -274,6 +312,16 @@ export default function ProduitsPage() {
       couleurs: (p.couleurs || []).join(", "),
       photo_url: p.photo_url,
     })
+    // Charger les photos existantes
+    const existingPhotos = (p.photos || [])
+      .filter((url: string) => url)
+      .map((url: string) => ({
+        id: uuidv4(),
+        previewUrl: url,
+        uploadedUrl: url,
+        uploading: false,
+      }))
+    setPhotoItems(existingPhotos)
     setDescriptionVisuelle(p.description_visuelle || null)
     setOpen(true)
   }
@@ -333,7 +381,7 @@ export default function ProduitsPage() {
           </div>
           <Dialog open={open} onOpenChange={handleDialogClose}>
               <DialogTrigger asChild>
-                <Button onClick={() => { setEditProduct(null); setForm(defaultForm); setDescriptionVisuelle(null) }}>
+                <Button onClick={() => { setEditProduct(null); setForm(defaultForm); setDescriptionVisuelle(null); setPhotoItems([]) }}>
                 <Plus className="h-4 w-4 mr-2" />
                 Ajouter
               </Button>
@@ -346,58 +394,83 @@ export default function ProduitsPage() {
               </DialogHeader>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Photo du produit</Label>
-                  <div className="flex items-center gap-4">
-                    {previewUrl || form.photo_url ? (
-                      <img
-                        src={previewUrl || form.photo_url}
-                        alt="Preview"
-                        className="w-20 h-20 object-cover rounded-lg border"
-                      />
-                    ) : (
-                      <div className="w-20 h-20 bg-muted rounded-lg flex items-center justify-center border">
-                        <ImageUp className="h-6 w-6 text-muted-foreground" />
-                      </div>
-                    )}
-                    <div className="flex flex-col gap-2">
-                      <input
-                        ref={fileRef}
-                        type="file"
-                        accept=".jpg,.jpeg,.png,.webp"
-                        className="hidden"
-                        onChange={handleImageSelect}
-                      />
-                      <Button
+                  <Label>Photos du produit</Label>
+
+                  {/* Galerie des photos */}
+                  {photoItems.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2 mb-2">
+                      {photoItems.map((item, index) => (
+                        <div
+                          key={item.id}
+                          className="relative group aspect-square rounded-lg border bg-muted overflow-hidden"
+                        >
+                          <img
+                            src={item.uploadedUrl || item.previewUrl}
+                            alt={`Photo ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          {/* Overlay au survol */}
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-white hover:bg-white/20"
+                              onClick={() => removePhoto(item.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          {/* Badge upload en cours */}
+                          {item.uploading && (
+                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                              <Loader2 className="h-5 w-5 animate-spin text-white" />
+                            </div>
+                          )}
+                          {/* Indicateur de position */}
+                          <div className="absolute top-1 left-1 bg-black/60 text-white text-xs rounded px-1.5 py-0.5">
+                            {index + 1}
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Bouton ajouter dans la grille */}
+                      <button
                         type="button"
-                        variant="outline"
                         onClick={() => fileRef.current?.click()}
-                        disabled={uploading || analysing}
+                        className="aspect-square rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-cyber-cyan/50 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-cyber-cyan transition-colors"
                       >
-                        {uploading ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Upload...
-                          </>
-                        ) : analysing ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Analyse...
-                          </>
-                        ) : (
-                          "Choisir une image"
-                        )}
-                      </Button>
-                      <span className="text-xs text-muted-foreground">JPG, PNG, WEBP max 5MB</span>
-                    </div>
-                  </div>
-                  {uploading && (
-                    <div className="w-full bg-muted rounded-full h-2">
-                      <div
-                        className="bg-primary h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${uploadProgress}%` }}
-                      />
+                        <ImageUp className="h-5 w-5" />
+                        <span className="text-xs">Ajouter</span>
+                      </button>
                     </div>
                   )}
+
+                  {/* État vide : pas encore de photos */}
+                  {photoItems.length === 0 && (
+                    <div
+                      onClick={() => fileRef.current?.click()}
+                      className="flex items-center gap-4 p-4 rounded-lg border-2 border-dashed border-muted-foreground/30 cursor-pointer hover:border-cyber-cyan/50 transition-colors"
+                    >
+                      <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center shrink-0">
+                        <ImageUp className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium">Ajouter des photos</span>
+                        <span className="text-xs text-muted-foreground">JPG, PNG, WEBP — max 5MB par photo</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    multiple
+                    accept=".jpg,.jpeg,.png,.webp"
+                    className="hidden"
+                    onChange={handleImageSelect}
+                  />
+
                   {uploadError && (
                     <p className="text-sm text-destructive flex items-center gap-1 mt-1">
                       <AlertCircle className="h-3 w-3 shrink-0" />
@@ -503,19 +576,26 @@ export default function ProduitsPage() {
         {filteredProduits.map((p) => (
           <Card key={p.id} className={!p.actif ? "opacity-60" : ""}>
             <CardContent className="p-4">
-              <div className="aspect-square bg-muted rounded-lg mb-3 overflow-hidden">
-                {p.photo_url ? (
-                  <img
-                    src={p.photo_url}
-                    alt={p.nom}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = "none"
-                      ;(e.target as HTMLImageElement).parentElement!.querySelector(".fallback")?.classList.remove("hidden")
-                    }}
-                  />
-                ) : null}
-                {!p.photo_url && (
+              <div className="relative aspect-square bg-muted rounded-lg mb-3 overflow-hidden group">
+                {/* Images : afficher la première ou un fallback */}
+                {(p.photos?.length > 0 || p.photo_url) ? (
+                  <>
+                    <img
+                      src={p.photos?.[0] || p.photo_url}
+                      alt={p.nom}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none"
+                      }}
+                    />
+                    {/* Badge nombre de photos */}
+                    {(p.photos?.length || 1) > 1 && (
+                      <div className="absolute top-2 right-2 bg-black/60 text-white text-xs rounded-full px-2 py-0.5">
+                        1/{p.photos!.length}
+                      </div>
+                    )}
+                  </>
+                ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <Package className="h-12 w-12 text-muted-foreground" />
                   </div>
