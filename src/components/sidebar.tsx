@@ -10,6 +10,7 @@ import {
   User,
   LogOut,
   Package,
+  Briefcase,
   MessageSquare,
   BarChart3,
   Bot,
@@ -28,6 +29,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/produits", label: "Produits", icon: Package },
+  { href: "/services", label: "Services", icon: Briefcase },
   { href: "/orders", label: "Commandes", icon: ShoppingCart },
   { href: "/conversations", label: "Conversations", icon: MessageSquare },
   { href: "/analytiques", label: "Analytiques", icon: BarChart3 },

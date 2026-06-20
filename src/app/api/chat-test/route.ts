@@ -27,6 +27,12 @@ export async function POST(request: Request) {
       .eq('actif', true)
       .gt('stock', 0)
 
+    const { data: services } = await supabase
+      .from('services')
+      .select('nom, prix, devise, type_prix, duree, categorie')
+      .eq('user_id', userId)
+      .eq('actif', true)
+
     if (!process.env.OPENCODE_API_KEY) {
       console.error("❌ OPENCODE_API_KEY manquante")
       return NextResponse.json(
@@ -35,11 +41,29 @@ export async function POST(request: Request) {
       )
     }
 
-    const systemPrompt = config?.prompt_final || `Tu es ${config?.nom_chatbot || 'Yasmine'}, une assistante commerciale. Tu aides les clients à commander des produits.`
+    const hasProduits = produits && produits.length > 0
+    const hasServices = services && services.length > 0
+    const isServiceBusiness = hasServices && !hasProduits
 
-    const produitsContext = produits?.length
-      ? `\n\nProduits disponibles :\n${produits.map((p: any) => `- ${p.nom} : ${p.prix} DZD | Tailles: ${p.tailles?.join(',')} | Couleurs: ${p.couleurs?.join(',')}`).join('\n')}`
-      : '\n\nAucun produit disponible pour le moment.'
+    const defaultPrompt = isServiceBusiness
+      ? `Tu es ${config?.nom_chatbot || 'Yasmine'}, une assistante commerciale. Tu aides les clients à découvrir et réserver des services.`
+      : `Tu es ${config?.nom_chatbot || 'Yasmine'}, une assistante commerciale. Tu aides les clients à commander des produits et services.`
+
+    const systemPrompt = config?.prompt_final || defaultPrompt
+
+    let catalogContext = ""
+    if (hasProduits) {
+      catalogContext += `\n\nProduits disponibles :\n${produits.map((p: any) => `- ${p.nom} : ${p.prix} DZD | Tailles: ${p.tailles?.join(',')} | Couleurs: ${p.couleurs?.join(',')}`).join('\n')}`
+    }
+    if (hasServices) {
+      catalogContext += `\n\nServices disponibles :\n${services.map((s: any) => {
+        const prixStr = s.type_prix === 'devis' ? 'Sur devis' : `${s.prix} ${s.devise}/${s.type_prix === 'heure' ? 'heure' : s.type_prix === 'seance' ? 'séance' : 'prestation'}`
+        return `- ${s.nom} (${s.categorie || 'Non catégorisé'}) : ${prixStr} — Durée: ${s.duree} min`
+      }).join('\n')}`
+    }
+    if (!hasProduits && !hasServices) {
+      catalogContext = '\n\nAucun produit ou service disponible pour le moment.'
+    }
 
     console.log(`🔑 Appel OpenCode API (${stream ? 'streaming' : 'standard'})...`)
 
@@ -54,7 +78,7 @@ export async function POST(request: Request) {
         messages: [
           {
             role: 'system',
-            content: systemPrompt + produitsContext
+            content: systemPrompt + catalogContext
           },
           ...conversationHistory,
           { role: 'user', content: message }

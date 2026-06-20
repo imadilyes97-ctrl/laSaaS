@@ -15,6 +15,22 @@ export type Product = {
   created_at: string
 }
 
+export type Service = {
+  id: string
+  user_id: string
+  nom: string
+  description: string
+  prix: number
+  devise: string
+  type_prix: "fixe" | "heure" | "seance" | "devis"
+  duree: number
+  categorie: string
+  photo_url: string
+  photos: string[]
+  actif: boolean
+  created_at: string
+}
+
 export type ChatbotConfig = {
   id: string
   user_id: string
