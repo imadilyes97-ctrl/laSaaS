@@ -69,12 +69,21 @@ export default function ServicesPage() {
 
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const defaultForm = {
+  const defaultForm: {
+    nom: string
+    description: string
+    prix: number
+    devise: string
+    type_prix: "fixe" | "heure" | "seance" | "devis"
+    duree: number
+    categorie: string
+    photo_url: string
+  } = {
     nom: "",
     description: "",
     prix: 0,
     devise: "DZD",
-    type_prix: "fixe" as const,
+    type_prix: "fixe",
     duree: 60,
     categorie: "",
     photo_url: "",
@@ -284,7 +293,7 @@ export default function ServicesPage() {
       description: s.description,
       prix: s.prix,
       devise: s.devise,
-      type_prix: s.type_prix,
+      type_prix: s.type_prix as "fixe" | "heure" | "seance" | "devis",
       duree: s.duree,
       categorie: s.categorie,
       photo_url: s.photo_url,

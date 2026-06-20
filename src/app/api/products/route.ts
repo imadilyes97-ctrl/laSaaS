@@ -43,7 +43,6 @@ export async function GET(request: Request) {
       produits: produits || [],
       services: services || [],
       config: {
-      config: {
         nom_chatbot: config.nom_chatbot,
         message_bienvenue: config.message_bienvenue,
         langue: config.langue,
