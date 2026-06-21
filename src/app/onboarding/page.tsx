@@ -132,7 +132,7 @@ export default function OnboardingPage() {
               ))}
             </div>
           </div>
-          <CardTitle className="text-2xl">Bienvenue sur YasmineStack</CardTitle>
+          <CardTitle className="text-2xl">Bienvenue sur LinkFlow</CardTitle>
           <CardDescription>
             Configurez votre boutique en quelques étapes
           </CardDescription>
