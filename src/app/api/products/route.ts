@@ -26,7 +26,7 @@ export async function GET(request: Request) {
 
     const { data: produits } = await supabase
       .from("produits")
-      .select("id, nom, description, photo_url, photos, photos_produit, photos_reelles, prix, devise, tailles, couleurs, stock, description_visuelle")
+      .select("id, nom, description, photo_url, photos, photos_produit, photos_reelles, prix, devise, tailles, couleurs, stock, description_visuelle, livraison_domicile, livraison_bureau")
       .eq("user_id", config.user_id)
       .eq("actif", true)
       .gt("stock", 0)

@@ -62,6 +62,8 @@ export default function ProduitsPage() {
     tailles: "",
     couleurs: "",
     photo_url: "",
+    livraison_domicile: 0,
+    livraison_bureau: 0,
   }
   const [form, setForm] = useState(defaultForm)
 
@@ -231,6 +233,8 @@ export default function ProduitsPage() {
       stock: form.stock,
       tailles: taillesArr,
       couleurs: couleursArr,
+      livraison_domicile: form.livraison_domicile,
+      livraison_bureau: form.livraison_bureau,
       description_visuelle: descVisuelle,
     }
 
@@ -268,6 +272,8 @@ export default function ProduitsPage() {
       tailles: (p.tailles || []).join(", "),
       couleurs: (p.couleurs || []).join(", "),
       photo_url: p.photo_url,
+      livraison_domicile: p.livraison_domicile ?? 0,
+      livraison_bureau: p.livraison_bureau ?? 0,
     })
     // Charger les photos existantes par catégorie
     const mapPhotos = (urls: string[]) =>
@@ -514,6 +520,44 @@ export default function ProduitsPage() {
                     />
                   </div>
                 </div>
+
+                {/* 🚚 Section Prix de livraison */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <svg className="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                    <Label className="font-semibold">🚚 Prix de livraison</Label>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Laissez 0 si livraison gratuite ou non disponible</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="livraison_domicile">À domicile (DA)</Label>
+                      <Input
+                        id="livraison_domicile"
+                        type="number"
+                        min={0}
+                        value={form.livraison_domicile}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, livraison_domicile: Number(e.target.value) }))
+                        }
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="livraison_bureau">Au bureau (DA)</Label>
+                      <Input
+                        id="livraison_bureau"
+                        type="number"
+                        min={0}
+                        value={form.livraison_bureau}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, livraison_bureau: Number(e.target.value) }))
+                        }
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="tailles">Tailles (séparées par des virgules)</Label>
                   <Input

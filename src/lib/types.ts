@@ -14,6 +14,8 @@ export type Product = {
   stock: number
   actif: boolean
   description_visuelle: Record<string, unknown>
+  livraison_domicile: number
+  livraison_bureau: number
   created_at: string
 }
 
