@@ -1,7 +1,3 @@
-/**
- * Composant de chargement animé avec effet cyber
- */
-
 import { Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -9,10 +5,10 @@ export function Loading({ className, text = "Chargement..." }: { className?: str
   return (
     <div className={cn("flex flex-col items-center justify-center gap-3 py-8", className)}>
       <div className="relative">
-        <div className="absolute inset-0 bg-cyber-cyan/10 rounded-full blur-xl animate-pulse"></div>
-        <Loader2 className="h-8 w-8 text-cyber-cyan animate-spin relative" />
+        <div className="absolute inset-0 rounded-full blur-xl animate-pulse" style={{ background: 'rgba(255,107,53,0.1)' }} />
+        <Loader2 className="h-8 w-8 animate-spin relative" style={{ color: '#ff6b35' }} />
       </div>
-      <p className="text-cyber-textSecondary text-sm font-medium animate-pulse-slow">
+      <p className="text-sm font-medium" style={{ color: '#a0a0b8' }}>
         {text}
       </p>
     </div>
@@ -22,7 +18,7 @@ export function Loading({ className, text = "Chargement..." }: { className?: str
 export function LoadingSpinner({ className }: { className?: string }) {
   return (
     <div className={cn("flex items-center justify-center", className)}>
-      <Loader2 className="h-5 w-5 text-cyber-cyan animate-spin" />
+      <Loader2 className="h-5 w-5 animate-spin" style={{ color: '#ff6b35' }} />
     </div>
   )
 }
@@ -31,17 +27,17 @@ export function LoadingOverlay({ visible = true }: { visible?: boolean }) {
   if (!visible) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-cyber-bg/80 backdrop-blur-sm">
-      <div className="bg-cyber-bgCard rounded-2xl p-8 shadow-2xl border border-cyber-border/20">
+    <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm" style={{ background: 'rgba(7,5,10,0.8)' }}>
+      <div className="rounded-2xl p-8 shadow-2xl" style={{ background: '#120f1e', border: '1px solid rgba(255,107,53,0.1)' }}>
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-cyber-cyan/20 to-cyber-blue/20 rounded-full blur-xl animate-spin-slow"></div>
-            <Loader2 className="h-10 w-10 text-cyber-cyan animate-spin relative" />
+            <div className="absolute inset-0 rounded-full blur-xl animate-spin" style={{ background: 'linear-gradient(135deg, rgba(255,107,53,0.2), rgba(247,37,133,0.2))' }} />
+            <Loader2 className="h-10 w-10 animate-spin relative" style={{ color: '#ff6b35' }} />
           </div>
-          <p className="text-cyber-textPrimary font-semibold animate-pulse-slow">
+          <p className="font-semibold" style={{ color: '#fcfcfc' }}>
             Traitement en cours...
           </p>
-          <p className="text-cyber-textSecondary text-sm text-center max-w-xs">
+          <p className="text-sm text-center max-w-xs" style={{ color: '#6b6b80' }}>
             Cela peut prendre quelques secondes
           </p>
         </div>

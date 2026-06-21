@@ -133,8 +133,8 @@ export default function ReconnaitreProduitPage() {
             ) : (
               <div className="flex flex-col items-center gap-2 text-muted-foreground">
                 <div className="relative">
-                  <Camera className="h-12 w-12 text-cyber-cyan" />
-                  <div className="absolute inset-0 bg-cyber-cyan/10 rounded-full blur-xl animate-pulse-slow"></div>
+                  <Camera className="h-12 w-12 text-[#ff6b35]" />
+                  <div className="absolute inset-0 bg-[#ff6b35]/10 rounded-full blur-xl animate-pulse"></div>
                 </div>
                 <p className="font-medium">Cliquez pour prendre une photo ou uploader</p>
                 <p className="text-xs text-muted-foreground/70">Formats supportés: JPG, PNG, WEBP</p>
@@ -203,7 +203,7 @@ export default function ReconnaitreProduitPage() {
                             </p>
                           )}
                           <div className="flex items-center gap-4 mt-2">
-                            <span className="text-xl font-bold text-cyber-cyan">
+                            <span className="text-xl font-bold text-[#ff6b35]">
                               {result.produit.prix} {result.produit.devise}
                             </span>
                             <span className={`text-sm font-medium ${result.produit.stock > 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -213,26 +213,26 @@ export default function ReconnaitreProduitPage() {
                         </div>
                       </div>
 
-                      <div className="bg-cyber-bgCard rounded-lg p-3 text-sm">
+                      <div className="bg-[#120f1e] rounded-lg p-3 text-sm">
                         <div className="flex items-center gap-2 mb-2">
-                          <Info className="w-4 h-4 text-cyber-cyan" />
-                          <span className="font-medium text-cyber-cyan">Détails de correspondance</span>
+                          <Info className="w-4 h-4 text-[#ff6b35]" />
+                          <span className="font-medium text-[#ff6b35]">Détails de correspondance</span>
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-muted-foreground">
                           <div>
-                            <span className="text-cyber-textSecondary">Type:</span>
+                            <span className="text-[#a0a0b8]">Type:</span>
                             <span className="font-medium">{result.clientDescription?.type || 'N/A'}</span>
                           </div>
                           <div>
-                            <span className="text-cyber-textSecondary">Couleur:</span>
+                            <span className="text-[#a0a0b8]">Couleur:</span>
                             <span className="font-medium">{result.clientDescription?.couleur_principale || 'N/A'}</span>
                           </div>
                           <div>
-                            <span className="text-cyber-textSecondary">Matière:</span>
+                            <span className="text-[#a0a0b8]">Matière:</span>
                             <span className="font-medium">{result.clientDescription?.matiere || 'N/A'}</span>
                           </div>
                           <div>
-                            <span className="text-cyber-textSecondary">Style:</span>
+                            <span className="text-[#a0a0b8]">Style:</span>
                             <span className="font-medium">{result.clientDescription?.style || 'N/A'}</span>
                           </div>
                         </div>
@@ -268,7 +268,7 @@ export default function ReconnaitreProduitPage() {
               {/* Historique des recherches */}
               {history.length > 0 && (
                 <div className="space-y-2">
-                  <h3 className="text-sm font-semibold text-cyber-textPrimary flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-[#fcfcfc] flex items-center gap-2">
                     <Clock className="w-4 h-4" />
                     Historique récent
                   </h3>
@@ -276,7 +276,7 @@ export default function ReconnaitreProduitPage() {
                     {history.map((item, index) => (
                       <div
                         key={index}
-                        className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border border-cyber-border cursor-pointer hover:border-cyber-cyan transition-all"
+                        className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border border-[rgba(255,107,53,0.12)] cursor-pointer hover:border-[#ff6b35] transition-all"
                         onClick={() => {
                           setPreview(item.file)
                           setFile(null)

@@ -388,7 +388,7 @@ export default function ProduitsPage() {
                 {/* 📸 Section Photos officielles */}
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
-                    <ImageUp className="h-4 w-4 text-cyber-cyan" />
+                    <ImageUp className="h-4 w-4 text-[#ff6b35]" />
                     <Label className="font-semibold">Photos officielles du produit</Label>
                   </div>
                   <p className="text-xs text-muted-foreground">Photos sur fond blanc ou studio — Max 5 photos</p>
@@ -411,7 +411,7 @@ export default function ProduitsPage() {
                           <div className="absolute top-1 left-1 bg-black/60 text-white text-xs rounded px-1.5 py-0.5">{index + 1}</div>
                         </div>
                       ))}
-                      <button type="button" onClick={() => fileRefProduit.current?.click()} className="aspect-square rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-cyber-cyan/50 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-cyber-cyan transition-colors">
+                      <button type="button" onClick={() => fileRefProduit.current?.click()} className="aspect-square rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-[#ff6b35]/50 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-[#ff6b35] transition-colors">
                         <ImageUp className="h-5 w-5" />
                         <span className="text-xs">Ajouter</span>
                       </button>
@@ -419,7 +419,7 @@ export default function ProduitsPage() {
                   )}
 
                   {photoItemsProduit.length === 0 && (
-                    <div onClick={() => fileRefProduit.current?.click()} className="flex items-center gap-4 p-4 rounded-lg border-2 border-dashed border-muted-foreground/30 cursor-pointer hover:border-cyber-cyan/50 transition-colors">
+                    <div onClick={() => fileRefProduit.current?.click()} className="flex items-center gap-4 p-4 rounded-lg border-2 border-dashed border-muted-foreground/30 cursor-pointer hover:border-[#ff6b35]/50 transition-colors">
                       <div className="w-14 h-14 bg-muted rounded-lg flex items-center justify-center shrink-0">
                         <ImageUp className="h-5 w-5 text-muted-foreground" />
                       </div>
@@ -459,7 +459,7 @@ export default function ProduitsPage() {
                           <div className="absolute top-1 left-1 bg-black/60 text-white text-xs rounded px-1.5 py-0.5">{index + 1}</div>
                         </div>
                       ))}
-                      <button type="button" onClick={() => fileRefReelles.current?.click()} className="aspect-square rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-cyber-cyan/50 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-cyber-cyan transition-colors">
+                      <button type="button" onClick={() => fileRefReelles.current?.click()} className="aspect-square rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-[#ff6b35]/50 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-[#ff6b35] transition-colors">
                         <ImageUp className="h-5 w-5" />
                         <span className="text-xs">Ajouter</span>
                       </button>
@@ -467,7 +467,7 @@ export default function ProduitsPage() {
                   )}
 
                   {photoItemsReelles.length === 0 && (
-                    <div onClick={() => fileRefReelles.current?.click()} className="flex items-center gap-4 p-4 rounded-lg border-2 border-dashed border-muted-foreground/30 cursor-pointer hover:border-cyber-cyan/50 transition-colors">
+                    <div onClick={() => fileRefReelles.current?.click()} className="flex items-center gap-4 p-4 rounded-lg border-2 border-dashed border-muted-foreground/30 cursor-pointer hover:border-[#ff6b35]/50 transition-colors">
                       <div className="w-14 h-14 bg-muted rounded-lg flex items-center justify-center shrink-0">
                         <ImageUp className="h-5 w-5 text-muted-foreground" />
                       </div>
@@ -643,7 +643,7 @@ export default function ProduitsPage() {
                         Stock: {p.stock}
                       </Badge>
                     ) : (
-                      <Badge className="bg-cyber-cyan/20 text-cyber-cyan border-cyber-cyanDim">En stock: {p.stock}</Badge>
+                      <Badge className="bg-[#ff6b35]/20 text-[#ff6b35] border-[rgba(255,107,53,0.3)]">En stock: {p.stock}</Badge>
                     )}
                   </div>
                 </div>

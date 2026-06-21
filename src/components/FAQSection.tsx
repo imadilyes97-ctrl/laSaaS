@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, ChevronUp, MessageSquare } from 'lucide-react'
+import { ChevronDown, ChevronUp, MessageSquare, Sparkles } from 'lucide-react'
 
 export default function FAQSection() {
   const [openIndex, setOpenIndex] = useState<number | null>(null)
@@ -38,40 +38,62 @@ export default function FAQSection() {
   }
 
   return (
-    <section className="relative w-full py-20 sm:py-28 px-4 sm:px-6 bg-cyber-bg">
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-12">
-          <h2 className="text-white text-3xl sm:text-4xl md:text-5xl font-semibold mb-4">
+    <section className="relative w-full py-24 sm:py-32 px-4 sm:px-6" style={{ background: '#07050a' }}>
+      <div className="absolute inset-0 pointer-events-none" style={{
+        background: 'radial-gradient(ellipse 60% 30% at 50% 100%, rgba(255, 107, 53, 0.03) 0%, transparent 60%)',
+      }} />
+
+      <div className="relative max-w-3xl mx-auto">
+        <div className="text-center mb-14">
+          <div className="tag mb-4">FAQ</div>
+          <h2 className="text-[#fcfcfc] text-3xl sm:text-4xl md:text-5xl font-medium mb-4" style={{ fontFamily: "'Instrument Serif', Georgia, serif", letterSpacing: '-0.03em' }}>
             Questions Fréquentes
           </h2>
-          <p className="text-cyber-textSecondary text-sm sm:text-base max-w-2xl mx-auto">
+          <p className="text-[#a0a0b8] text-sm sm:text-base max-w-xl mx-auto">
             Vous avez des questions ? Nous avons les réponses. Si vous ne trouvez pas ce que vous cherchez, contactez-nous !
           </p>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {faqs.map((faq, index) => (
-            <div key={index} className="bg-cyber-bgCard border border-cyber-border/50 rounded-xl overflow-hidden">
+            <div
+              key={index}
+              className="rounded-xl overflow-hidden transition-all duration-300"
+              style={{
+                background: 'linear-gradient(180deg, rgba(255, 107, 53, 0.03) 0%, transparent 100%)',
+                border: '1px solid rgba(255, 107, 53, 0.08)',
+                transitionTimingFunction: 'cubic-bezier(0.23, 1, 0.32, 1)',
+              }}
+            >
               <button
                 onClick={() => toggleFAQ(index)}
-                className="w-full flex items-center justify-between p-5 text-left hover:bg-cyber-bgHover transition-colors"
+                className="w-full flex items-center justify-between p-5 text-left hover:bg-[rgba(255,107,53,0.03)] transition-colors duration-200"
+                style={{ transitionTimingFunction: 'cubic-bezier(0.23, 1, 0.32, 1)' }}
               >
-                <span className="text-white font-medium text-sm sm:text-base">
+                <span className="text-[#fcfcfc] font-medium text-sm sm:text-base pr-4">
                   {faq.question}
                 </span>
-                {openIndex === index ? (
-                  <ChevronUp className="w-5 h-5 text-cyber-cyan" />
-                ) : (
-                  <ChevronDown className="w-5 h-5 text-cyber-textSecondary" />
-                )}
+                <div className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-300 ${
+                  openIndex === index ? 'bg-[rgba(255,107,53,0.15)]' : 'bg-[rgba(255,107,53,0.06)]'
+                }`}>
+                  {openIndex === index ? (
+                    <ChevronUp className="w-4 h-4 text-[#ff6b35]" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-[#a0a0b8]" />
+                  )}
+                </div>
               </button>
 
               <div
-                className={`overflow-hidden transition-all duration-300 ${openIndex === index ? 'max-h-96' : 'max-h-0'}`}
-                style={{ transitionProperty: 'max-height' }}
+                className={`overflow-hidden transition-all duration-300`}
+                style={{
+                  maxHeight: openIndex === index ? '500px' : '0',
+                  transitionTimingFunction: 'cubic-bezier(0.23, 1, 0.32, 1)',
+                }}
               >
-                <div className="p-5 pt-0">
-                  <p className="text-cyber-textSecondary text-sm leading-relaxed">
+                <div className="px-5 pb-5 pt-0">
+                  <div className="w-full h-px bg-[rgba(255,107,53,0.06)] mb-4" />
+                  <p className="text-[#a0a0b8] text-sm leading-relaxed">
                     {faq.answer}
                   </p>
                 </div>
@@ -81,13 +103,13 @@ export default function FAQSection() {
         </div>
 
         <div className="text-center mt-12">
-          <p className="text-cyber-textSecondary mb-4">Vous ne trouvez pas votre réponse ?</p>
+          <p className="text-[#6b6b80] mb-5 text-sm">Vous ne trouvez pas votre réponse ?</p>
           <button
             onClick={() => {
               const section = document.getElementById('comment')
               if (section) section.scrollIntoView({ behavior: 'smooth' })
             }}
-            className="bg-cyber-cyan hover:bg-cyber-blue text-cyber-bg px-6 py-3 rounded-full font-medium transition-colors inline-flex items-center gap-2"
+            className="inline-flex items-center gap-2 bg-[#ff6b35] hover:bg-[#e55a2b] text-[#07050a] text-sm font-semibold px-6 py-3 rounded-full transition-all duration-200 shadow-lg shadow-[#ff6b35]/20"
           >
             <MessageSquare className="w-4 h-4" />
             Essayez la démo

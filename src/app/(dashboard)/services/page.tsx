@@ -416,7 +416,7 @@ export default function ServicesPage() {
                       <button
                         type="button"
                         onClick={() => fileRef.current?.click()}
-                        className="aspect-square rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-cyber-cyan/50 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-cyber-cyan transition-colors"
+                        className="aspect-square rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-[#ff6b35]/50 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-[#ff6b35] transition-colors"
                       >
                         <ImageUp className="h-5 w-5" />
                         <span className="text-xs">Ajouter</span>
@@ -427,7 +427,7 @@ export default function ServicesPage() {
                   {photoItems.length === 0 && (
                     <div
                       onClick={() => fileRef.current?.click()}
-                      className="flex items-center gap-4 p-4 rounded-lg border-2 border-dashed border-muted-foreground/30 cursor-pointer hover:border-cyber-cyan/50 transition-colors"
+                      className="flex items-center gap-4 p-4 rounded-lg border-2 border-dashed border-muted-foreground/30 cursor-pointer hover:border-[#ff6b35]/50 transition-colors"
                     >
                       <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center shrink-0">
                         <ImageUp className="h-6 w-6 text-muted-foreground" />

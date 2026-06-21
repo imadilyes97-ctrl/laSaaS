@@ -460,7 +460,7 @@ export default function DashboardPage() {
               <ShoppingCart className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-cyber-cyan">{todayOrders.length}</div>
+              <div className="text-2xl font-bold text-[#ff6b35]">{todayOrders.length}</div>
             </CardContent>
           </Card>
         </motion.div>
@@ -478,7 +478,7 @@ export default function DashboardPage() {
               <MessageSquare className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-cyber-cyan">
+              <div className="text-2xl font-bold text-[#ff6b35]">
                 {todayConversations.length}
               </div>
             </CardContent>
@@ -498,7 +498,7 @@ export default function DashboardPage() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-cyber-cyan">{todayRevenue.toLocaleString()} DA</div>
+              <div className="text-2xl font-bold text-[#ff6b35]">{todayRevenue.toLocaleString()} DA</div>
             </CardContent>
           </Card>
         </motion.div>
@@ -514,7 +514,7 @@ export default function DashboardPage() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-cyber-cyan">{conversionRate}%</div>
+              <div className="text-2xl font-bold text-[#ff6b35]">{conversionRate}%</div>
             </CardContent>
           </Card>
         </motion.div>
@@ -530,7 +530,7 @@ export default function DashboardPage() {
               <AlertTriangle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-cyber-cyan">{cancelRate}%</div>
+              <div className="text-2xl font-bold text-[#ff6b35]">{cancelRate}%</div>
               <p className="text-xs text-muted-foreground mt-1">
                 {parseFloat(cancelRate) > 10 ? "⚠️ Taux élevé" : "✅ Bon taux"}
               </p>
@@ -549,7 +549,7 @@ export default function DashboardPage() {
               <ShoppingBag className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-cyber-cyan">
+              <div className="text-2xl font-bold text-[#ff6b35]">
                 {avgBasket.toLocaleString()} DA
               </div>
             </CardContent>
@@ -566,7 +566,7 @@ export default function DashboardPage() {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold text-cyber-cyan">
+            <div className="text-lg font-bold text-[#ff6b35]">
               {topProduct ? `${topProduct[0]} (${topProduct[1]})` : "N/A"}
             </div>
           </CardContent>
@@ -579,7 +579,7 @@ export default function DashboardPage() {
             <MapPin className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold text-cyber-cyan">
+            <div className="text-lg font-bold text-[#ff6b35]">
               {topWilaya ? `${topWilaya[0]} (${topWilaya[1]})` : "N/A"}
             </div>
           </CardContent>
@@ -592,7 +592,7 @@ export default function DashboardPage() {
             <Palette className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold text-cyber-cyan">
+            <div className="text-lg font-bold text-[#ff6b35]">
               {topCouleur ? `${topCouleur[0]} (${topCouleur[1]})` : "N/A"}
             </div>
           </CardContent>
@@ -605,14 +605,14 @@ export default function DashboardPage() {
             <Ruler className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold text-cyber-cyan">
+            <div className="text-lg font-bold text-[#ff6b35]">
               {topTaille ? `${topTaille[0]} (${topTaille[1]})` : "N/A"}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="chart-anim grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Commandes par jour (7 derniers jours)</CardTitle>
@@ -668,7 +668,8 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
-              <Table>
+              <div className="dashboard-table">
+                <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Client</TableHead>
@@ -809,6 +810,7 @@ export default function DashboardPage() {
                 </TableBody>
               </Table>
             </div>
+            </div>
             {filteredOrders.length > 10 && (
               <div className="mt-4 text-center">
                 <Button variant="outline" size="sm">
@@ -836,7 +838,7 @@ export default function DashboardPage() {
                 className="h-20 flex flex-col items-center justify-center gap-2"
                 onClick={() => router.push('/produits?action=add')}
               >
-                <Package className="h-6 w-6 text-cyber-cyan" />
+                <Package className="h-6 w-6 text-[#ff6b35]" />
                 <span className="text-sm">Ajouter produit</span>
               </Button>
               <Button
@@ -844,7 +846,7 @@ export default function DashboardPage() {
                 className="h-20 flex flex-col items-center justify-center gap-2"
                 onClick={exportData}
               >
-                <Download className="h-6 w-6 text-cyber-cyan" />
+                <Download className="h-6 w-6 text-[#ff6b35]" />
                 <span className="text-sm">Exporter données</span>
               </Button>
               <Button
@@ -852,7 +854,7 @@ export default function DashboardPage() {
                 className="h-20 flex flex-col items-center justify-center gap-2"
                 onClick={() => router.push('/settings')}
               >
-                <Settings className="h-6 w-6 text-cyber-cyan" />
+                <Settings className="h-6 w-6 text-[#ff6b35]" />
                 <span className="text-sm">Paramètres</span>
               </Button>
               <Button
@@ -860,7 +862,7 @@ export default function DashboardPage() {
                 className="h-20 flex flex-col items-center justify-center gap-2"
                 onClick={() => router.push('/chatbot')}
               >
-                <Bot className="h-6 w-6 text-cyber-cyan" />
+                <Bot className="h-6 w-6 text-[#ff6b35]" />
                 <span className="text-sm">Configurer chatbot</span>
               </Button>
             </div>

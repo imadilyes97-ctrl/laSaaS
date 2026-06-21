@@ -521,7 +521,7 @@ Réponds toujours de manière ${prompt_ton} et dans la langue ${prompt_langue}.`
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-cyber-cyan">{stats.messagesToday}</div>
+            <div className="text-2xl font-bold text-[#ff6b35]">{stats.messagesToday}</div>
           </CardContent>
         </Card>
         <Card>
@@ -530,7 +530,7 @@ Réponds toujours de manière ${prompt_ton} et dans la langue ${prompt_langue}.`
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-cyber-cyan">{stats.ordersToday}</div>
+            <div className="text-2xl font-bold text-[#ff6b35]">{stats.ordersToday}</div>
           </CardContent>
         </Card>
       </div>
@@ -710,7 +710,7 @@ Réponds toujours de manière ${prompt_ton} et dans la langue ${prompt_langue}.`
                   <RefreshCw className="h-4 w-4" />
                 </Button>
               </div>
-              {copied && <p className="text-xs text-cyber-cyan">Copié !</p>}
+              {copied && <p className="text-xs text-[#ff6b35]">Copié !</p>}
             </div>
 
             <div className="rounded-lg bg-muted p-4 space-y-2">
@@ -893,44 +893,44 @@ Réponds toujours de manière ${prompt_ton} et dans la langue ${prompt_langue}.`
       </Card>
 
       <Dialog open={testOpen} onOpenChange={setTestOpen}>
-        <DialogContent className="max-w-sm bg-cyber-bgCard border-cyber-cyan/30">
+        <DialogContent className="max-w-sm bg-[#120f1e] border-[#ff6b35]/30">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-white">
-              <Bot className="h-5 w-5 text-cyber-cyan" />
+              <Bot className="h-5 w-5 text-[#ff6b35]" />
               Tester {nom_chatbot}
             </DialogTitle>
           </DialogHeader>
-          <div className="h-72 overflow-y-auto space-y-3 border border-cyber-border rounded-lg p-3 bg-cyber-bgSecond">
+          <div className="h-72 overflow-y-auto space-y-3 border border-[rgba(255,107,53,0.12)] rounded-lg p-3 bg-[#0c0a14]">
             {testMessages.length === 0 && (
               <div className="flex items-start gap-2">
-                <div className="w-6 h-6 rounded-full bg-cyber-cyan/20 flex items-center justify-center shrink-0 mt-0.5">
-                  <Bot className="h-3.5 w-3.5 text-cyber-cyan" />
+                <div className="w-6 h-6 rounded-full bg-[#ff6b35]/20 flex items-center justify-center shrink-0 mt-0.5">
+                  <Bot className="h-3.5 w-3.5 text-[#ff6b35]" />
                 </div>
-                <div className="bg-cyber-bgCard text-white rounded-lg p-2 text-sm">
+                <div className="bg-[#120f1e] text-white rounded-lg p-2 text-sm">
                   {message_bienvenue || `Bonjour ! Je suis ${nom_chatbot}. Comment puis-je vous aider ?`}
                 </div>
               </div>
             )}
             {testMessages.map((msg, i) => (
               <div key={i} className={`flex items-start gap-2 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${msg.role === "user" ? "bg-cyber-cyan/20" : "bg-cyber-cyan/20"}`}>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${msg.role === "user" ? "bg-[#ff6b35]/20" : "bg-[#ff6b35]/20"}`}>
                   {msg.role === "user" ? (
-                    <User className="h-3.5 w-3.5 text-cyber-cyan" />
+                    <User className="h-3.5 w-3.5 text-[#ff6b35]" />
                   ) : (
-                    <Bot className="h-3.5 w-3.5 text-cyber-cyan" />
+                    <Bot className="h-3.5 w-3.5 text-[#ff6b35]" />
                   )}
                 </div>
-                <div className={`rounded-lg p-2 text-sm max-w-[80%] ${msg.role === "user" ? "bg-cyber-cyan text-black" : "bg-cyber-bgCard text-white"}`}>
+                <div className={`rounded-lg p-2 text-sm max-w-[80%] ${msg.role === "user" ? "bg-[#ff6b35] text-black" : "bg-[#120f1e] text-white"}`}>
                   {msg.content}
                 </div>
               </div>
             ))}
             {testLoading && (
               <div className="flex items-start gap-2">
-                <div className="w-6 h-6 rounded-full bg-cyber-cyan/20 flex items-center justify-center shrink-0 mt-0.5">
-                  <Bot className="h-3.5 w-3.5 text-cyber-cyan" />
+                <div className="w-6 h-6 rounded-full bg-[#ff6b35]/20 flex items-center justify-center shrink-0 mt-0.5">
+                  <Bot className="h-3.5 w-3.5 text-[#ff6b35]" />
                 </div>
-                <div className="bg-cyber-bgCard text-cyber-textSecondary rounded-lg p-2 text-sm italic">
+                <div className="bg-[#120f1e] text-[#a0a0b8] rounded-lg p-2 text-sm italic">
                   En train d&apos;écrire...
                 </div>
               </div>
@@ -942,7 +942,7 @@ Réponds toujours de manière ${prompt_ton} et dans la langue ${prompt_langue}.`
               variant="ghost"
               size="sm"
               onClick={() => setTestMessages([])}
-              className="text-xs text-cyber-textSecondary"
+              className="text-xs text-[#a0a0b8]"
             >
               <RefreshCw className="h-3 w-3 mr-1" />
               Reset
@@ -956,7 +956,7 @@ Réponds toujours de manière ${prompt_ton} et dans la langue ${prompt_langue}.`
               value={testInput}
               onChange={(e) => setTestInput(e.target.value)}
               placeholder="Écrivez un message..."
-              className="bg-cyber-bgSecond border-cyber-border text-white"
+              className="bg-[#0c0a14] border-[rgba(255,107,53,0.12)] text-white"
             />
             <Button type="submit" size="icon" disabled={!testInput.trim() || testLoading}>
               {testLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
