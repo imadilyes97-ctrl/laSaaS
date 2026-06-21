@@ -26,6 +26,7 @@ import {
 import { Plus, Pencil, Trash2, ImageUp, Briefcase, AlertTriangle, AlertCircle, Search, X, Loader2, Clock, Tag } from "lucide-react"
 import { v4 as uuidv4 } from "uuid"
 import type { Service } from "@/lib/types"
+import { useCloudinaryUpload } from "@/hooks/useCloudinaryUpload"
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
 const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"]
@@ -68,6 +69,7 @@ export default function ServicesPage() {
   const [saveError, setSaveError] = useState("")
 
   const fileRef = useRef<HTMLInputElement>(null)
+  const cloudinaryUpload = useCloudinaryUpload()
 
   const defaultForm: {
     nom: string
@@ -133,42 +135,15 @@ export default function ServicesPage() {
   }
 
   const uploadImage = async (file: File) => {
-    setUploading(true)
     setUploadError("")
 
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      setUploading(false)
-      setUploadError("Utilisateur non connecté")
+    const url = await cloudinaryUpload.upload(file)
+    if (!url) {
+      setUploadError(cloudinaryUpload.state.error || "Erreur lors de l'upload")
       return ""
     }
 
-    const ext = file.name.split(".").pop()
-    const path = `services/${user.id}/${crypto.randomUUID()}.${ext}`
-
-    const { error } = await supabase.storage
-      .from("produits")
-      .upload(path, file)
-
-    if (error) {
-      setUploading(false)
-      if (error.message?.includes("bucket")) {
-        setUploadError("Bucket 'produits' introuvable. Créez-le dans Supabase Storage.")
-      } else if (error.message?.includes("policy")) {
-        setUploadError("Permission refusée. Vérifiez les politiques RLS du bucket.")
-      } else {
-        setUploadError(`Erreur lors de l'upload : ${error.message}`)
-      }
-      return ""
-    }
-
-    const { data: urlData } = supabase.storage
-      .from("produits")
-      .getPublicUrl(path)
-
-    setUploading(false)
-    return urlData?.publicUrl || ""
+    return url
   }
 
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -449,10 +424,27 @@ export default function ServicesPage() {
                   />
 
                   {uploadError && (
-                    <p className="text-sm text-destructive flex items-center gap-1 mt-1">
-                      <AlertCircle className="h-3 w-3 shrink-0" />
-                      {uploadError}
-                    </p>
+                    <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                      <p className="text-sm text-destructive flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3 shrink-0" />
+                        {uploadError}
+                      </p>
+                    </div>
+                  )}
+
+                  {cloudinaryUpload.state.uploading && (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>Upload en cours...</span>
+                        <span>{cloudinaryUpload.state.progress}%</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-[#ff6b35] rounded-full transition-all duration-300 ease-out"
+                          style={{ width: `${cloudinaryUpload.state.progress}%` }}
+                        />
+                      </div>
+                    </div>
                   )}
                 </div>
 

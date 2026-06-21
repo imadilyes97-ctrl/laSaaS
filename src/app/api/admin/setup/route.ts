@@ -114,18 +114,6 @@ export async function POST() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  try {
-    const { data: b } = await supabase.storage.getBucket("produits")
-    if (!b) {
-      await supabase.storage.createBucket("produits", { public: true })
-      results.push({ table: "storage.bucket", status: "created" })
-    } else {
-      results.push({ table: "storage.bucket", status: "exists" })
-    }
-  } catch {
-    results.push({ table: "storage.bucket", status: "error", error: "Impossible de créer le bucket" })
-  }
-
   const tables = ["profiles", "commandes", "conversations", "produits", "config_chatbot"]
   for (const table of tables) {
     const { error } = await supabase.from(table).select("id", { count: "exact", head: true })

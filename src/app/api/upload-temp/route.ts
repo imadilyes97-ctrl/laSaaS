@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { cloudinary } from "@/lib/cloudinary"
 
 export async function POST(request: Request) {
   try {
@@ -19,26 +19,31 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Image trop grande, max 10MB" }, { status: 400 })
     }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    // Convertir le File en buffer pour Cloudinary
+    const buffer = Buffer.from(await file.arrayBuffer())
 
-    const ext = file.name.split(".").pop()
-    const path = `temp/client/${Date.now()}_${Math.random().toString(36).substring(2)}.${ext}`
+    // Upload vers Cloudinary
+    const result = await new Promise<{ secure_url: string }>((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: "temp",
+          resource_type: "image",
+        },
+        (error, result) => {
+          if (error) {
+            reject(new Error(error.message))
+          } else if (result) {
+            resolve({ secure_url: result.secure_url })
+          } else {
+            reject(new Error("Échec de l'upload Cloudinary"))
+          }
+        }
+      )
+      uploadStream.end(buffer)
+    })
 
-    const { error: uploadError } = await supabase.storage
-      .from("produits")
-      .upload(path, file)
-
-    if (uploadError) {
-      return NextResponse.json({ error: "Erreur upload: " + uploadError.message }, { status: 500 })
-    }
-
-    const { data: urlData } = supabase.storage.from("produits").getPublicUrl(path)
-
-    return NextResponse.json({ url: urlData.publicUrl })
+    return NextResponse.json({ url: result.secure_url })
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    return NextResponse.json({ error: "Erreur upload: " + (err?.message || err) }, { status: 500 })
   }
 }
