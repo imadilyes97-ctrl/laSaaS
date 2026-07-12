@@ -10,20 +10,33 @@ export default function ChatDemo() {
   const [input, setInput] = useState('')
   const [step, setStep] = useState(0)
   const [isTyping, setIsTyping] = useState(false)
+  const [visibleMessages, setVisibleMessages] = useState<Set<number>>(new Set([0]))
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const msgContainerRef = useRef<HTMLDivElement>(null)
 
   const demoSteps = [
-    { user: "Je voudrais commander une robe", delay: 1000 },
-    { assistant: "Bien sûr ! Quelle taille et couleur souhaitez-vous ? Voici nos modèles disponibles : [photos]", delay: 1500 },
-    { user: "Taille M en bleu", delay: 1000 },
-    { assistant: "Parfait ! Pour finaliser, pouvez-vous me donner votre nom et numéro de téléphone ?", delay: 1500 },
-    { user: "Marie Dupont, 0612345678", delay: 1000 },
-    { assistant: "Commande enregistrée ! Vous recevrez un SMS de confirmation sous peu. Merci Marie ! 🎉", delay: 1500 }
+    { user: "Je voudrais commander une robe", delay: 800 },
+    { assistant: "Bien sûr ! Quelle taille et couleur souhaitez-vous ? Voici nos modèles disponibles :", delay: 1200 },
+    { user: "Taille M en bleu", delay: 800 },
+    { assistant: "Parfait ! Pour finaliser, pouvez-vous me donner votre nom et numéro de téléphone ?", delay: 1200 },
+    { user: "Marie Dupont, 0612345678", delay: 800 },
+    { assistant: "Commande enregistrée ! Vous recevrez un SMS de confirmation sous peu. Merci Marie ! 🎉", delay: 1200 }
   ]
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
+
+  // 🎬 Animate new messages appearing
+  useEffect(() => {
+    if (messages.length > visibleMessages.size) {
+      const lastIdx = messages.length - 1
+      const timer = setTimeout(() => {
+        setVisibleMessages(prev => new Set(prev).add(lastIdx))
+      }, 50)
+      return () => clearTimeout(timer)
+    }
+  }, [messages.length, visibleMessages])
 
   const handleSend = () => {
     if (input.trim()) {
@@ -40,7 +53,7 @@ export default function ChatDemo() {
           setStep(step + 1)
           setIsTyping(false)
         }
-      }, demoSteps[step]?.delay || 1000)
+      }, demoSteps[step]?.delay || 800)
     }
   }
 
@@ -53,44 +66,62 @@ export default function ChatDemo() {
   }
 
   return (
-    <div className="rounded-xl p-4 max-w-md mx-auto w-full" style={{ background: '#120f1e', border: '1px solid rgba(255,107,53,0.1)' }}>
+    <div className="rounded-2xl p-4 max-w-md mx-auto w-full transition-all duration-300 hover:shadow-xl hover:shadow-[#ff6b35]/5" style={{
+      background: 'linear-gradient(180deg, rgba(15,10,30,0.9), rgba(15,10,30,0.6))',
+      border: '1px solid rgba(255,107,53,0.1)',
+      backdropFilter: 'blur(12px)',
+    }}>
       {/* Header */}
       <div className="flex items-center gap-2.5 mb-4 pb-3" style={{ borderBottom: '1px solid rgba(255,107,53,0.06)' }}>
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#ff6b35] to-[#f72585] flex items-center justify-center">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#ff6b35] to-[#f72585] flex items-center justify-center shadow-lg shadow-[#ff6b35]/20 animate-glow-pulse">
           <Bot className="w-4 h-4 text-white" />
         </div>
         <div>
-          <p className="text-sm font-medium text-[#fcfcfc]">Yasmine</p>
-          <p className="text-xs text-[#6b6b80]">En ligne</p>
+          <p className="text-sm font-semibold text-[#fcfcfc]">Yasmine</p>
+          <div className="flex items-center gap-1.5">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#22c55e] opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#22c55e]" />
+            </span>
+            <p className="text-[10px] text-[#22c55e] font-medium">En ligne</p>
+          </div>
         </div>
       </div>
 
       {/* Messages */}
-      <div className="h-80 overflow-y-auto space-y-3 mb-4 pr-2" style={{ scrollbarWidth: 'thin' }}>
-        {messages.map((msg, i) => (
-          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+      <div ref={msgContainerRef} className="h-80 overflow-y-auto space-y-3 mb-4 pr-2" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,107,53,0.15) transparent' }}>
+        {messages.map((msg, i) => {
+          const isVisible = visibleMessages.has(i)
+          return (
             <div
-              className={`max-w-[80%] p-3 rounded-lg text-sm leading-relaxed ${
-                msg.role === 'user'
-                  ? 'text-[#07050a]'
-                  : 'text-[#a0a0b8] border'
-              }`}
-              style={msg.role === 'user'
-                ? { background: 'linear-gradient(135deg, #ff6b35, #f72585)' }
-                : { background: '#0c0a14', borderColor: 'rgba(255,107,53,0.08)' }
-              }
+              key={i}
+              className={`flex transition-all duration-500 ${
+                msg.role === 'user' ? 'justify-end' : 'justify-start'
+              } ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}`}
             >
-              {msg.content}
+              <div
+                className={`max-w-[80%] p-3 rounded-2xl text-sm leading-relaxed transition-all duration-200 ${
+                  msg.role === 'user'
+                    ? 'text-[#06030b] shadow-lg shadow-[#ff6b35]/10'
+                    : 'text-[#9d9db5] border'
+                } ${isVisible ? 'scale-100' : 'scale-95'}`}
+                style={msg.role === 'user'
+                  ? { background: 'linear-gradient(135deg, #ff6b35, #f72585)' }
+                  : { background: 'rgba(11,7,22,0.8)', borderColor: 'rgba(255,107,53,0.08)' }
+                }
+              >
+                {msg.content}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
         {isTyping && (
-          <div className="flex justify-start">
-            <div className="max-w-[80%] p-3 rounded-lg flex items-center gap-2" style={{ background: '#0c0a14', border: '1px solid rgba(255,107,53,0.08)' }}>
+          <div className="flex justify-start animate-fade-in">
+            <div className="max-w-[80%] p-3 rounded-2xl flex items-center gap-2" style={{ background: 'rgba(11,7,22,0.8)', border: '1px solid rgba(255,107,53,0.08)' }}>
               <div className="flex gap-1">
-                <div className="w-1.5 h-1.5 bg-[#6b6b80] rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
-                <div className="w-1.5 h-1.5 bg-[#6b6b80] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-                <div className="w-1.5 h-1.5 bg-[#6b6b80] rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
+                <div className="w-2 h-2 bg-[#64647a] rounded-full animate-bounce" style={{ animationDelay: '0s', animationDuration: '0.6s' }} />
+                <div className="w-2 h-2 bg-[#64647a] rounded-full animate-bounce" style={{ animationDelay: '0.15s', animationDuration: '0.6s' }} />
+                <div className="w-2 h-2 bg-[#64647a] rounded-full animate-bounce" style={{ animationDelay: '0.3s', animationDuration: '0.6s' }} />
               </div>
             </div>
           </div>
@@ -100,9 +131,9 @@ export default function ChatDemo() {
 
       {/* Quick replies */}
       <div className="space-y-2 mb-3">
-        <p className="text-xs text-[#6b6b80] flex items-center gap-1.5">
+        <p className="text-[10px] text-[#64647a] flex items-center gap-1.5 font-medium uppercase tracking-wider">
           <MessageSquare className="w-3 h-3" />
-          Essayez ces exemples :
+          Suggestions
         </p>
         <div className="flex flex-wrap gap-2">
           {[
@@ -113,12 +144,14 @@ export default function ChatDemo() {
             <button
               key={i}
               onClick={() => handleQuickReply(text)}
-              className="px-3 py-1 rounded-full text-xs transition-colors"
+              className="px-3 py-1.5 rounded-full text-xs transition-all duration-200 hover:scale-105 active:scale-95"
               style={{
-                background: '#0c0a14',
+                background: 'rgba(11,7,22,0.8)',
                 border: '1px solid rgba(255,107,53,0.1)',
-                color: '#a0a0b8',
+                color: '#9d9db5',
               }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(255,107,53,0.3)'; e.currentTarget.style.color = '#fcfcfc' }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(255,107,53,0.1)'; e.currentTarget.style.color = '#9d9db5' }}
             >
               {text}
             </button>
@@ -133,9 +166,9 @@ export default function ChatDemo() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Écrivez votre message..."
-          className="flex-1 px-3 py-2 rounded-lg text-sm outline-none"
+          className="flex-1 px-4 py-2.5 rounded-xl text-sm outline-none transition-all duration-200 focus:ring-1"
           style={{
-            background: '#0c0a14',
+            background: 'rgba(11,7,22,0.8)',
             border: '1px solid rgba(255,107,53,0.1)',
             color: '#fcfcfc',
           }}
@@ -145,13 +178,13 @@ export default function ChatDemo() {
         <button
           onClick={handleSend}
           disabled={!input.trim() || isTyping}
-          className="p-2 rounded-lg transition-colors"
+          className="p-2.5 rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 disabled:hover:scale-100"
           style={{
-            background: input.trim() ? '#ff6b35' : 'rgba(255,107,53,0.1)',
+            background: input.trim() ? 'linear-gradient(135deg, #ff6b35, #f72585)' : 'rgba(255,107,53,0.1)',
             opacity: !input.trim() || isTyping ? 0.5 : 1,
           }}
         >
-          <Send className={`w-4 h-4 ${input.trim() ? 'text-[#07050a]' : 'text-[#6b6b80]'}`} />
+          <Send className={`w-4 h-4 ${input.trim() ? 'text-[#06030b]' : 'text-[#64647a]'}`} />
         </button>
       </div>
     </div>

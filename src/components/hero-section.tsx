@@ -32,6 +32,24 @@ export default function HeroSection() {
     return () => { document.body.style.overflow = '' }
   }, [menuOpen])
 
+  // 🛑 FIX AUTO-SCROLL : force le scroll en haut au chargement
+  useEffect(() => {
+    // Désactiver smooth scroll temporairement
+    document.documentElement.style.scrollBehavior = 'auto'
+    window.scrollTo(0, 0)
+
+    // Réactiver smooth scroll après que tout soit stabilisé
+    const timer = setTimeout(() => {
+      document.documentElement.style.scrollBehavior = 'smooth'
+      ScrollTrigger.refresh()
+    }, 100)
+
+    return () => {
+      clearTimeout(timer)
+      document.documentElement.style.scrollBehavior = ''
+    }
+  }, [])
+
   // GSAP Hero entrance
   useEffect(() => {
     const tl = gsap.timeline({ defaults: { ease: EASE.out } })
@@ -121,10 +139,59 @@ export default function HeroSection() {
     return () => { tl.kill() }
   }, [])
 
-  // Cards stagger
-  useRevealStagger('.advantage-card', { stagger: 0.1, y: 40 })
-  useRevealStagger('.stat-hero', { stagger: 0.12, y: 30 })
-  useRevealStagger('.step-card', { stagger: 0.12, y: 30 })
+  // ─── Cards stagger reveal on scroll (plus vif) ───
+  useRevealStagger('.advantage-card', { stagger: 0.06, y: 30, duration: 0.5 })
+  useRevealStagger('.stat-hero', { stagger: 0.08, y: 25, duration: 0.5 })
+  useRevealStagger('.step-card', { stagger: 0.08, y: 30, duration: 0.5 })
+
+  // ✨ Animations continues — la page VIT
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      // Robot container — floating subtil
+      gsap.to('.robot-container', {
+        y: -8,
+        duration: 3.5,
+        repeat: -1,
+        yoyo: true,
+        ease: 'sine.inOut',
+      })
+
+      // CTA button glow pulse
+      gsap.to('.cta-glow-pulse', {
+        boxShadow: '0 0 30px rgba(255,107,53,0.3), 0 0 60px rgba(255,107,53,0.1)',
+        duration: 2,
+        repeat: -1,
+        yoyo: true,
+        ease: 'sine.inOut',
+      })
+
+      // Stats icons — floating léger (décalé par index)
+      document.querySelectorAll('.stat-hero-icon').forEach((el, i) => {
+        gsap.to(el, {
+          y: -4,
+          duration: 2 + i * 0.3,
+          repeat: -1,
+          yoyo: true,
+          ease: 'sine.inOut',
+          delay: i * 0.2,
+        })
+      })
+
+      // Avantage icons — breathing glow
+      document.querySelectorAll('.advantage-icon').forEach((el) => {
+        gsap.to(el, {
+          borderColor: 'rgba(255,107,53,0.3)',
+          boxShadow: '0 0 20px rgba(255,107,53,0.1)',
+          duration: 2.5,
+          repeat: -1,
+          yoyo: true,
+          ease: 'sine.inOut',
+        })
+      })
+    })
+
+    return () => ctx.revert()
+  }, [])
 
   const navLinks = [
     { href: '#avantages', label: 'Avantages' },
@@ -175,7 +242,9 @@ export default function HeroSection() {
         <FloatingParticles count={25} />
 
         {/* Robot animation background */}
-        <RobotAnimation className="absolute inset-0 w-full h-full z-[0] opacity-50" />
+        <div className="robot-container">
+          <RobotAnimation className="absolute inset-0 w-full h-full z-[0] opacity-60" />
+        </div>
 
         {/* ══ NAV ══ */}
         <nav ref={navRef} className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-4 sm:px-8 md:px-12 py-5 sm:py-6">
@@ -288,7 +357,7 @@ export default function HeroSection() {
           {/* CTA */}
           <div ref={ctaRef} className="flex items-center gap-4 mt-8 sm:mt-10 flex-wrap justify-center">
             <a href={LOGIN_URL}
-              className="group inline-flex items-center gap-2 bg-[#ff6b35] hover:bg-[#e55a2b] text-[#06030b] text-sm font-semibold px-8 py-3.5 rounded-full transition-all duration-200 shadow-xl shadow-[#ff6b35]/25 hover:shadow-[#ff6b35]/40 btn-glow"
+              className="group inline-flex items-center gap-2 bg-[#ff6b35] hover:bg-[#e55a2b] text-[#06030b] text-sm font-semibold px-8 py-3.5 rounded-full transition-all duration-200 shadow-xl shadow-[#ff6b35]/25 hover:shadow-[#ff6b35]/40 btn-glow cta-glow-pulse"
               style={{ transitionTimingFunction: 'cubic-bezier(0.23, 1, 0.32, 1)' }}>
               Commencer Maintenant
               <ArrowUpRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
@@ -356,7 +425,7 @@ export default function HeroSection() {
                   e.currentTarget.style.transform = 'translateY(0)'
                   e.currentTarget.style.boxShadow = 'none'
                 }}>
-                <div className="w-10 h-10 rounded-xl bg-[rgba(255,107,53,0.1)] flex items-center justify-center mb-4 border border-[rgba(255,107,53,0.08)]">
+                <div className="w-10 h-10 rounded-xl bg-[rgba(255,107,53,0.1)] flex items-center justify-center mb-4 border border-[rgba(255,107,53,0.08)] advantage-icon">
                   <item.icon className="w-5 h-5 text-[#ff6b35]" />
                 </div>
                 <h3 className="text-[#fcfcfc] text-lg font-medium mb-2.5">{item.title}</h3>
@@ -381,7 +450,7 @@ export default function HeroSection() {
                 background: 'linear-gradient(180deg, rgba(255, 107, 53, 0.04) 0%, transparent 100%)',
                 border: '1px solid rgba(255, 107, 53, 0.06)',
               }}>
-                <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-[rgba(255,107,53,0.08)] flex items-center justify-center border border-[rgba(255,107,53,0.06)]">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-[rgba(255,107,53,0.08)] flex items-center justify-center border border-[rgba(255,107,53,0.06)] stat-hero-icon">
                   <stat.icon className="w-5 h-5 text-[#ff6b35]" />
                 </div>
                 <div ref={(el) => { numbersRef.current[i] = el }} data-count={stat.number}
