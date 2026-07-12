@@ -129,7 +129,7 @@ export default function FloatingParticles({ count = 35 }: { count?: number }) {
   return (
     <canvas
       ref={canvasRef}
-      className="absolute inset-0 pointer-events-none z-[1]"
+      className="absolute inset-0 pointer-events-none z-[3]"
       style={{ width: '100%', height: '100%' }}
     />
   )

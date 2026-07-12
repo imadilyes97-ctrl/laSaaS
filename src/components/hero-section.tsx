@@ -246,6 +246,11 @@ export default function HeroSection() {
           <RobotAnimation className="absolute inset-0 w-full h-full z-[0] opacity-60" />
         </div>
 
+        {/* Overlay gradient pour lisibilité du texte */}
+        <div className="absolute inset-0 pointer-events-none z-[1]" style={{
+          background: 'linear-gradient(180deg, rgba(6,3,11,0.1) 0%, rgba(6,3,11,0.4) 40%, rgba(6,3,11,0.7) 70%, rgba(6,3,11,0.9) 100%)',
+        }} />
+
         {/* ══ NAV ══ */}
         <nav ref={navRef} className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-4 sm:px-8 md:px-12 py-5 sm:py-6">
           <div className="flex items-center gap-2.5">
