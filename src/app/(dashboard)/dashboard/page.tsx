@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback, useRef } from "react"
 import { createClient } from "@/lib/supabase"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
   ShoppingCart,
@@ -21,11 +20,11 @@ import {
   Download,
   AlertTriangle,
   ShoppingBag,
-  ArrowUp,
-  ArrowDown,
   Search,
-  Settings,
   Bot,
+  ArrowUpRight,
+  Sparkles,
+  Zap,
 } from "lucide-react"
 import {
   LineChart,
@@ -41,14 +40,6 @@ import {
 import { format, subDays, isSameDay, parseISO, formatDistanceToNow } from "date-fns"
 import { fr } from "date-fns/locale"
 import type { Order, Conversation } from "@/lib/types"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import {
   Select,
   SelectContent,
@@ -69,7 +60,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
+import { LoadingSkeleton, EmptyState, usePageState } from "@/components/PageStates"
 
 function playNotificationSound() {
   try {
@@ -84,45 +75,49 @@ function playNotificationSound() {
     gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3)
     osc.start(ctx.currentTime)
     osc.stop(ctx.currentTime + 0.3)
-  } catch {}
+  } catch { /* noop */ }
 }
 
 export default function DashboardPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [conversations, setConversations] = useState<Conversation[]>([])
-  const [loading, setLoading] = useState(true)
+  const { isLoading, setLoaded } = usePageState({ minLoadingMs: 500 })
   const [newOrderAlert, setNewOrderAlert] = useState(false)
   const [dateRange, setDateRange] = useState("today")
   const [statutFilter, setStatutFilter] = useState("all")
   const [searchTerm, setSearchTerm] = useState("")
   const alertTimeoutRef = useRef<NodeJS.Timeout>(undefined)
+  const pageRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
   const today = new Date()
 
-  // Filtrer les données selon les filtres sélectionnés
+  // Page enter animation
+  useEffect(() => {
+    const el = pageRef.current
+    if (!el || isLoading) return
+    import('gsap').then(({ default: gsap }) => {
+      gsap.fromTo(el,
+        { opacity: 0, y: 12 },
+        { opacity: 1, y: 0, duration: 0.5, ease: 'cubic-bezier(0.23, 1, 0.32, 1)' }
+      )
+    })
+  }, [isLoading])
+
   const filteredOrders = orders
     .filter((o) => {
-      // Filtre par terme de recherche
       if (searchTerm &&
           !`${o.nom_client} ${o.produits} ${o.wilaya} ${o.statut}`.toLowerCase()
             .includes(searchTerm.toLowerCase())) {
         return false
       }
-
-      // Filtre par statut
       if (statutFilter !== "all" && o.statut !== statutFilter) {
         return false
       }
-
-      // Filtre par période
       const orderDate = parseISO(o.created_at)
-      const today = new Date()
-
       switch (dateRange) {
         case "yesterday":
-          const yesterday = subDays(today, 1)
-          return isSameDay(orderDate, yesterday)
+          return isSameDay(orderDate, subDays(today, 1))
         case "week":
           return orderDate >= subDays(today, 7)
         case "month":
@@ -140,13 +135,9 @@ export default function DashboardPage() {
     isSameDay(parseISO(c.created_at), today)
   )
   const todayRevenue = todayOrders.reduce((sum, o) => sum + o.total, 0)
-
-  // Calculer le panier moyen
   const avgBasket = filteredOrders.length > 0
     ? (filteredOrders.reduce((sum, o) => sum + o.total, 0) / filteredOrders.length)
     : 0
-
-  // Calculer le taux d'annulation
   const cancelRate = filteredOrders.length > 0
     ? ((filteredOrders.filter(o => o.statut === "annulée").length / filteredOrders.length) * 100).toFixed(1)
     : "0"
@@ -155,17 +146,14 @@ export default function DashboardPage() {
   const wilayaCounts: Record<string, number> = {}
   const couleurCounts: Record<string, number> = {}
   const tailleCounts: Record<string, number> = {}
-
   orders.forEach((o) => {
     if (o.produits) {
-      const prods = o.produits.split(",").map((p) => p.trim())
-      prods.forEach((p) => {
+      o.produits.split(",").map(p => p.trim()).forEach(p => {
         productCounts[p] = (productCounts[p] || 0) + 1
       })
     }
     if (o.wilaya) wilayaCounts[o.wilaya] = (wilayaCounts[o.wilaya] || 0) + 1
-    if (o.couleur)
-      couleurCounts[o.couleur] = (couleurCounts[o.couleur] || 0) + 1
+    if (o.couleur) couleurCounts[o.couleur] = (couleurCounts[o.couleur] || 0) + 1
     if (o.taille) tailleCounts[o.taille] = (tailleCounts[o.taille] || 0) + 1
   })
 
@@ -174,16 +162,13 @@ export default function DashboardPage() {
   const topCouleur = Object.entries(couleurCounts).sort((a, b) => b[1] - a[1])[0]
   const topTaille = Object.entries(tailleCounts).sort((a, b) => b[1] - a[1])[0]
 
-  const conversionRate =
-    conversations.length > 0
-      ? ((orders.length / conversations.length) * 100).toFixed(1)
-      : "0"
+  const conversionRate = conversations.length > 0
+    ? ((orders.length / conversations.length) * 100).toFixed(1)
+    : "0"
 
   const last7Days = Array.from({ length: 7 }, (_, i) => {
     const date = subDays(today, 6 - i)
-    const dayOrders = orders.filter((o) =>
-      isSameDay(parseISO(o.created_at), date)
-    )
+    const dayOrders = orders.filter((o) => isSameDay(parseISO(o.created_at), date))
     return {
       date: format(date, "dd/MM"),
       commandes: dayOrders.length,
@@ -197,106 +182,54 @@ export default function DashboardPage() {
 
   const fetchData = useCallback(async () => {
     const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    const { data: ordersData } = await supabase
-      .from("commandes")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
+    const [ordersRes, convsRes] = await Promise.all([
+      supabase.from("commandes").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
+      supabase.from("conversations").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
+    ])
 
-    const { data: conversationsData } = await supabase
-      .from("conversations")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-
-    if (ordersData) setOrders(ordersData)
-    if (conversationsData) setConversations(conversationsData)
-    setLoading(false)
-  }, [])
+    if (ordersRes.data) setOrders(ordersRes.data)
+    if (convsRes.data) setConversations(convsRes.data)
+    setLoaded()
+  }, [setLoaded])
 
   useEffect(() => {
     fetchData()
-
     const supabase = createClient()
     const channel = supabase
       .channel("commandes-realtime")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "commandes" },
-        (payload) => {
-          const newOrder = payload.new as Order
-          supabase.auth.getUser().then(({ data: { user } }) => {
-            if (user && newOrder.user_id === user.id) {
-              setOrders((prev) => [newOrder, ...prev])
-              playNotificationSound()
-              setNewOrderAlert(true)
-              if (alertTimeoutRef.current) clearTimeout(alertTimeoutRef.current)
-              alertTimeoutRef.current = setTimeout(() => setNewOrderAlert(false), 5000)
-            }
-          })
-        }
-      )
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "commandes" }, (payload) => {
+        const newOrder = payload.new as Order
+        supabase.auth.getUser().then(({ data: { user } }) => {
+          if (user && newOrder.user_id === user.id) {
+            setOrders(prev => [newOrder, ...prev])
+            playNotificationSound()
+            setNewOrderAlert(true)
+            if (alertTimeoutRef.current) clearTimeout(alertTimeoutRef.current)
+            alertTimeoutRef.current = setTimeout(() => setNewOrderAlert(false), 5000)
+          }
+        })
+      })
       .subscribe()
-
     return () => {
       supabase.removeChannel(channel)
       if (alertTimeoutRef.current) clearTimeout(alertTimeoutRef.current)
     }
   }, [fetchData])
 
-  const statutBadge = (statut: string) => {
-    const variants: Record<string, "warning" | "success" | "default" | "destructive"> = {
-      en_attente: "warning",
-      confirmée: "success",
-      livrée: "default",
-      annulée: "destructive",
-    }
-    const labels: Record<string, string> = {
-      en_attente: "En attente",
-      confirmée: "Confirmée",
-      livrée: "Livrée",
-      annulée: "Annulée",
-    }
-    return (
-      <Badge variant={variants[statut] || "outline"}>
-        {labels[statut] || statut}
-      </Badge>
-    )
-  }
-
-  // Fonction pour mettre à jour le statut d'une commande
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     const supabase = createClient()
-    const { error } = await supabase
-      .from("commandes")
-      .update({ statut: newStatus })
-      .eq("id", orderId)
-
-    if (!error) {
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, statut: newStatus } : o))
-    }
+    const { error } = await supabase.from("commandes").update({ statut: newStatus }).eq("id", orderId)
+    if (!error) setOrders(prev => prev.map(o => o.id === orderId ? { ...o, statut: newStatus } : o))
   }
 
-  // Fonction pour exporter les données
   const exportData = () => {
     const csvData = [
       ["ID", "Client", "Wilaya", "Produits", "Total", "Statut", "Date"],
-      ...filteredOrders.map(o => [
-        o.id,
-        o.nom_client,
-        o.wilaya,
-        o.produits,
-        o.total,
-        o.statut,
-        format(parseISO(o.created_at), "yyyy-MM-dd HH:mm")
-      ])
+      ...filteredOrders.map(o => [o.id, o.nom_client, o.wilaya, o.produits, o.total, o.statut, format(parseISO(o.created_at), "yyyy-MM-dd HH:mm")])
     ]
-
     const csvContent = csvData.map(row => row.join(",")).join("\n")
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
     const url = URL.createObjectURL(blob)
@@ -306,569 +239,439 @@ export default function DashboardPage() {
     link.click()
   }
 
-  // Fonction pour voir les détails d'une commande
-  const viewOrderDetails = (order: Order) => {
-    router.push(`/orders/${order.id}`)
-  }
-
-  // Fonction pour supprimer une commande
   const deleteOrder = async (orderId: string) => {
     if (confirm("Êtes-vous sûr de vouloir supprimer cette commande ?")) {
       const supabase = createClient()
-      const { error } = await supabase
-        .from("commandes")
-        .delete()
-        .eq("id", orderId)
-
-      if (!error) {
-        setOrders(prev => prev.filter(o => o.id !== orderId))
-      }
+      await supabase.from("commandes").delete().eq("id", orderId)
+      setOrders(prev => prev.filter(o => o.id !== orderId))
     }
   }
 
-  // Fonction pour imprimer une commande
-  const printOrder = (order: Order) => {
-    const printWindow = window.open("", "_blank")
-    if (printWindow) {
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Commande #${order.id}</title>
-            <style>
-              body { font-family: Arial, sans-serif; padding: 20px; }
-              h1 { color: #3b82f6; }
-              table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-              th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-              th { background-color: #f2f2f2; }
-            </style>
-          </head>
-          <body>
-            <h1>Commande #${order.id}</h1>
-            <p><strong>Date:</strong> ${format(parseISO(order.created_at), "PPpp")}</p>
-            <p><strong>Client:</strong> ${order.nom_client}</p>
-            <p><strong>Téléphone:</strong> ${order.telephone}</p>
-            <p><strong>Wilaya:</strong> ${order.wilaya}</p>
-            <p><strong>Statut:</strong> ${statutBadge(order.statut).props.children}</p>
-
-            <h2>Produits</h2>
-            <p>${order.produits}</p>
-
-            <h2>Total: ${order.total.toLocaleString()} DA</h2>
-          </body>
-        </html>
-      `)
-      printWindow.document.close()
-      printWindow.print()
+  const statutBadge = (statut: string) => {
+    const variants: Record<string, "warning" | "success" | "default" | "destructive"> = {
+      en_attente: "warning", confirmée: "success", livrée: "default", annulée: "destructive",
     }
+    const labels: Record<string, string> = {
+      en_attente: "En attente", confirmée: "Confirmée", livrée: "Livrée", annulée: "Annulée",
+    }
+    return <Badge className="badge-premium" variant={variants[statut] || "outline"}>{labels[statut] || statut}</Badge>
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Chargement...</p>
-      </div>
-    )
-  }
+  if (isLoading) return <LoadingSkeleton />
 
   return (
-    <div className="space-y-6">
-      {newOrderAlert && (
-        <div className="fixed top-4 right-4 z-50 bg-primary text-primary-foreground px-4 py-3 rounded-lg shadow-lg animate-in slide-in-from-top-2 flex items-center gap-2">
-          <ShoppingCart className="h-4 w-4" />
-          Nouvelle commande reçue !
-        </div>
-      )}
-
+    <div ref={pageRef} className="space-y-6">
+      {/* ═══ New Order Alert ═══ */}
       <AnimatePresence>
         {newOrderAlert && (
           <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="fixed top-4 right-4 z-50 bg-primary text-primary-foreground px-4 py-3 rounded-lg shadow-lg flex items-center gap-2"
+            initial={{ opacity: 0, x: 20, scale: 0.95 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 20, scale: 0.95 }}
+            className="fixed top-4 right-4 z-50 toast-premium flex items-center gap-3 px-4 py-3"
           >
-            <ShoppingCart className="h-4 w-4" />
-            Nouvelle commande reçue !
+            <div className="w-8 h-8 rounded-lg bg-[rgba(255,107,53,0.15)] flex items-center justify-center">
+              <ShoppingCart className="h-4 w-4 text-[#ff6b35]" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-[#fcfcfc]">Nouvelle commande !</p>
+              <p className="text-xs text-[#9d9db5]">Une commande vient d&apos;être reçue</p>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      {/* ═══ Page Header ═══ */}
+      <div className="page-header flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">
+          <div className="flex items-center gap-2 mb-1">
+            <h1>Dashboard</h1>
+            <Sparkles className="h-4 w-4 text-[#ff6b35] animate-pulse-soft" />
+          </div>
+          <p>
             {dateRange === "today" ? "Aujourd'hui" :
              dateRange === "yesterday" ? "Hier" :
              dateRange === "week" ? "7 derniers jours" :
-             "30 derniers jours"} - {format(today, "EEEE d MMMM yyyy", { locale: fr })}
+             "30 derniers jours"} · {format(today, "EEEE d MMMM yyyy", { locale: fr })}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <div className="relative">
+            <Input
+              placeholder="Rechercher..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-[180px] pl-8 h-9 text-sm bg-[#0f0a1e] border-[rgba(255,107,53,0.12)]"
+            />
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-[#64647a]" />
+          </div>
           <Select value={dateRange} onValueChange={setDateRange}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[140px] h-9 text-sm bg-[#0f0a1e] border-[rgba(255,107,53,0.12)]">
               <SelectValue placeholder="Période" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="today">Aujourd'hui</SelectItem>
+              <SelectItem value="today">Aujourd&apos;hui</SelectItem>
               <SelectItem value="yesterday">Hier</SelectItem>
-              <SelectItem value="week">7 derniers jours</SelectItem>
-              <SelectItem value="month">30 derniers jours</SelectItem>
+              <SelectItem value="week">7 jours</SelectItem>
+              <SelectItem value="month">30 jours</SelectItem>
             </SelectContent>
           </Select>
-
           <Select value={statutFilter} onValueChange={setStatutFilter}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[140px] h-9 text-sm bg-[#0f0a1e] border-[rgba(255,107,53,0.12)]">
               <SelectValue placeholder="Statut" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tous les statuts</SelectItem>
+              <SelectItem value="all">Tous</SelectItem>
               <SelectItem value="en_attente">En attente</SelectItem>
               <SelectItem value="confirmée">Confirmées</SelectItem>
               <SelectItem value="livrée">Livrées</SelectItem>
               <SelectItem value="annulée">Annulées</SelectItem>
             </SelectContent>
           </Select>
-
-          <div className="relative">
-            <Input
-              placeholder="Rechercher..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-[200px] pr-8"
-            />
-            <Search className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          </div>
-
-          <Button variant="outline" onClick={exportData}>
-            <Download className="h-4 w-4 mr-2" />
-            Exporter
+          <Button variant="outline" size="sm" onClick={exportData} className="h-9 border-[rgba(255,107,53,0.12)]">
+            <Download className="h-3.5 w-3.5 mr-1.5" />
+            Export
           </Button>
         </div>
       </div>
 
+      {/* ═══ Stats Grid ═══ */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
-                Commandes aujourd'hui
-              </CardTitle>
-              <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-[#ff6b35]">{todayOrders.length}</div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
-                Conversations aujourd'hui
-              </CardTitle>
-              <MessageSquare className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-[#ff6b35]">
-                {todayConversations.length}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+          <div className="stat-card">
+            <div className="flex items-center justify-between mb-3">
+              <span className="stat-label">Commandes</span>
+              <div className="stat-icon">
+                <ShoppingCart className="h-4 w-4" />
               </div>
-            </CardContent>
-          </Card>
+            </div>
+            <div className="stat-value">{todayOrders.length}</div>
+            <p className="stat-label">{dateRange === "today" ? "aujourd'hui" : "période"}</p>
+          </div>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
-                Chiffre d'affaires
-              </CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-[#ff6b35]">{todayRevenue.toLocaleString()} DA</div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Taux de conversion</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-[#ff6b35]">{conversionRate}%</div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-        >
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Taux d'annulation</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-[#ff6b35]">{cancelRate}%</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {parseFloat(cancelRate) > 10 ? "⚠️ Taux élevé" : "✅ Bon taux"}
-              </p>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-        >
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Panier moyen</CardTitle>
-              <ShoppingBag className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-[#ff6b35]">
-                {avgBasket.toLocaleString()} DA
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+          <div className="stat-card">
+            <div className="flex items-center justify-between mb-3">
+              <span className="stat-label">Conversations</span>
+              <div className="stat-icon" style={{ background: 'rgba(124, 58, 237, 0.12)', color: '#7c3aed', borderColor: 'rgba(124, 58, 237, 0.15)' }}>
+                <MessageSquare className="h-4 w-4" />
               </div>
-            </CardContent>
-          </Card>
+            </div>
+            <div className="stat-value" style={{ color: '#7c3aed' }}>{todayConversations.length}</div>
+            <p className="stat-label">aujourd&apos;hui</p>
+          </div>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+          <div className="stat-card">
+            <div className="flex items-center justify-between mb-3">
+              <span className="stat-label">Chiffre d&apos;affaires</span>
+              <div className="stat-icon" style={{ background: 'rgba(34, 197, 94, 0.12)', color: '#22c55e', borderColor: 'rgba(34, 197, 94, 0.15)' }}>
+                <DollarSign className="h-4 w-4" />
+              </div>
+            </div>
+            <div className="stat-value" style={{ color: '#22c55e' }}>{todayRevenue.toLocaleString()} <span className="text-sm font-medium opacity-60">DA</span></div>
+            <p className="stat-label">aujourd&apos;hui</p>
+          </div>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          <div className="stat-card">
+            <div className="flex items-center justify-between mb-3">
+              <span className="stat-label">Conversion</span>
+              <div className="stat-icon" style={{ background: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b', borderColor: 'rgba(245, 158, 11, 0.15)' }}>
+                <TrendingUp className="h-4 w-4" />
+              </div>
+            </div>
+            <div className="stat-value" style={{ color: '#f59e0b' }}>{conversionRate}%</div>
+            <p className="stat-label">conversations → commandes</p>
+          </div>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+          <div className="stat-card">
+            <div className="flex items-center justify-between mb-3">
+              <span className="stat-label">Annulations</span>
+              <div className="stat-icon" style={{ background: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.15)' }}>
+                <AlertTriangle className="h-4 w-4" />
+              </div>
+            </div>
+            <div className="stat-value" style={{ color: '#ef4444' }}>{cancelRate}%</div>
+            <p className="stat-label">
+              {parseFloat(cancelRate) > 10 ? "⚠️ Taux élevé" : "✅ Bon taux"}
+            </p>
+          </div>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+          <div className="stat-card">
+            <div className="flex items-center justify-between mb-3">
+              <span className="stat-label">Panier moyen</span>
+              <div className="stat-icon">
+                <ShoppingBag className="h-4 w-4" />
+              </div>
+            </div>
+            <div className="stat-value">{avgBasket.toLocaleString()} <span className="text-sm font-medium opacity-60">DA</span></div>
+            <p className="stat-label">par commande</p>
+          </div>
         </motion.div>
       </div>
 
+      {/* ═══ Secondary Stats ═══ */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Produit le plus demandé
-            </CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg font-bold text-[#ff6b35]">
-              {topProduct ? `${topProduct[0]} (${topProduct[1]})` : "N/A"}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Wilaya la plus active
-            </CardTitle>
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg font-bold text-[#ff6b35]">
-              {topWilaya ? `${topWilaya[0]} (${topWilaya[1]})` : "N/A"}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Couleur la plus demandée
-            </CardTitle>
-            <Palette className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg font-bold text-[#ff6b35]">
-              {topCouleur ? `${topCouleur[0]} (${topCouleur[1]})` : "N/A"}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Taille la plus demandée
-            </CardTitle>
-            <Ruler className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg font-bold text-[#ff6b35]">
-              {topTaille ? `${topTaille[0]} (${topTaille[1]})` : "N/A"}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="stat-card !p-4">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="stat-icon !w-8 !h-8"><Package className="h-3.5 w-3.5" /></div>
+            <span className="text-xs font-medium text-[#64647a] uppercase tracking-wider">Top Produit</span>
+          </div>
+          <p className="font-semibold text-[#fcfcfc]">{topProduct ? `${topProduct[0]} (${topProduct[1]})` : "N/A"}</p>
+        </div>
+        <div className="stat-card !p-4">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="stat-icon !w-8 !h-8"><MapPin className="h-3.5 w-3.5" /></div>
+            <span className="text-xs font-medium text-[#64647a] uppercase tracking-wider">Top Wilaya</span>
+          </div>
+          <p className="font-semibold text-[#fcfcfc]">{topWilaya ? `${topWilaya[0]} (${topWilaya[1]})` : "N/A"}</p>
+        </div>
+        <div className="stat-card !p-4">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="stat-icon !w-8 !h-8"><Palette className="h-3.5 w-3.5" /></div>
+            <span className="text-xs font-medium text-[#64647a] uppercase tracking-wider">Top Couleur</span>
+          </div>
+          <p className="font-semibold text-[#fcfcfc]">{topCouleur ? `${topCouleur[0]} (${topCouleur[1]})` : "N/A"}</p>
+        </div>
+        <div className="stat-card !p-4">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="stat-icon !w-8 !h-8"><Ruler className="h-3.5 w-3.5" /></div>
+            <span className="text-xs font-medium text-[#64647a] uppercase tracking-wider">Top Taille</span>
+          </div>
+          <p className="font-semibold text-[#fcfcfc]">{topTaille ? `${topTaille[0]} (${topTaille[1]})` : "N/A"}</p>
+        </div>
       </div>
 
-      <div className="chart-anim grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Commandes par jour (7 derniers jours)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={last7Days}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <RechartsTooltip />
-                <Bar dataKey="commandes" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Chiffre d'affaires par jour</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={last7Days}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <RechartsTooltip />
-                <Line
-                  type="monotone"
-                  dataKey="revenu"
-                  stroke="hsl(var(--chart-2))"
-                  strokeWidth={2}
-                  dot={{ fill: "hsl(var(--chart-2))" }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+      {/* ═══ Charts ═══ */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="chart-container">
+          <h3 className="font-semibold text-sm text-[#fcfcfc] mb-4">Commandes — 7 jours</h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={last7Days}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,107,53,0.06)" />
+              <XAxis dataKey="date" tick={{ fill: '#64647a', fontSize: 12 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: '#64647a', fontSize: 12 }} axisLine={false} tickLine={false} />
+              <RechartsTooltip
+                contentStyle={{
+                  background: 'rgba(15,10,30,0.95)',
+                  border: '1px solid rgba(255,107,53,0.15)',
+                  borderRadius: '8px',
+                  backdropFilter: 'blur(12px)',
+                }}
+                labelStyle={{ color: '#9d9db5' }}
+              />
+              <Bar dataKey="commandes" fill="#ff6b35" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="chart-container">
+          <h3 className="font-semibold text-sm text-[#fcfcfc] mb-4">Chiffre d&apos;affaires — 7 jours</h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={last7Days}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,107,53,0.06)" />
+              <XAxis dataKey="date" tick={{ fill: '#64647a', fontSize: 12 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: '#64647a', fontSize: 12 }} axisLine={false} tickLine={false} />
+              <RechartsTooltip
+                contentStyle={{
+                  background: 'rgba(15,10,30,0.95)',
+                  border: '1px solid rgba(255,107,53,0.15)',
+                  borderRadius: '8px',
+                }}
+                labelStyle={{ color: '#9d9db5' }}
+              />
+              <Line type="monotone" dataKey="revenu" stroke="#7c3aed" strokeWidth={2.5} dot={{ fill: '#7c3aed', r: 3 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.7 }}
-      >
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Commandes {filteredOrders.length > 0 ? `(${filteredOrders.length})` : ''}</CardTitle>
-            <Badge variant="secondary" className="flex items-center gap-1">
-              {statutFilter === 'all' ? 'Tous' : statutFilter}
-              <ChevronDown className="h-3 w-3" />
-            </Badge>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <div className="dashboard-table">
-                <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Client</TableHead>
-                    <TableHead>Wilaya</TableHead>
-                    <TableHead>Produits</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredOrders.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">
-                        <div className="flex flex-col items-center gap-2">
-                          <Package className="h-8 w-8 text-muted-foreground" />
-                          <p className="text-muted-foreground">Aucune commande trouvée</p>
-                          <p className="text-xs text-muted-foreground">
-                            Essayez de changer les filtres ou ajoutez une nouvelle commande
-                          </p>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredOrders
-                      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                      .slice(0, 10)
-                      .map((order) => (
-                        <motion.tr
-                          key={order.id}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          className="hover:bg-muted/50 transition-colors"
-                        >
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Avatar className="h-8 w-8">
-                                <AvatarImage
-                                  src={`https://api.dicebear.com/7.x/initials/svg?seed=${order.nom_client}`}
-                                  alt={order.nom_client}
-                                />
-                                <AvatarFallback>{order.nom_client.charAt(0)}</AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="font-medium text-sm">{order.nom_client}</p>
-                                <p className="text-xs text-muted-foreground">{order.telephone}</p>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="bg-muted">
-                              {order.wilaya}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <TooltipPrimitive.Provider>
-                              <TooltipPrimitive.Root>
-                                <TooltipPrimitive.Trigger asChild>
-                                  <Badge variant="secondary" className="max-w-[200px] truncate cursor-pointer">
-                                    {order.produits}
-                                  </Badge>
-                                </TooltipPrimitive.Trigger>
-                                <TooltipPrimitive.Content side="top">
-                                  <p>{order.produits}</p>
-                                  {order.couleur && <p>Couleur: {order.couleur}</p>}
-                                  {order.taille && <p>Taille: {order.taille}</p>}
-                                </TooltipPrimitive.Content>
-                              </TooltipPrimitive.Root>
-                            </TooltipPrimitive.Provider>
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {order.total.toLocaleString()} DA
-                          </TableCell>
-                          <TableCell>
-                            <Select
-                              defaultValue={order.statut}
-                              onValueChange={(value) => updateOrderStatus(order.id, value as any)}
-                            >
-                              <SelectTrigger className="w-[120px] h-8 text-xs">
-                                <SelectValue placeholder="Statut" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="en_attente">En attente</SelectItem>
-                                <SelectItem value="confirmée">Confirmée</SelectItem>
-                                <SelectItem value="livrée">Livrée</SelectItem>
-                                <SelectItem value="annulée">Annulée</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell>
-                            <TooltipPrimitive.Provider>
-                              <TooltipPrimitive.Root>
-                                <TooltipPrimitive.Trigger asChild>
-                                  <p className="text-xs text-muted-foreground cursor-pointer">
-                                    {formatDistanceToNow(parseISO(order.created_at), {
-                                      addSuffix: true,
-                                      locale: fr
-                                    })}
-                                  </p>
-                                </TooltipPrimitive.Trigger>
-                                <TooltipPrimitive.Content side="top">
-                                  <p>{format(parseISO(order.created_at), "PPpp", { locale: fr })}</p>
-                                </TooltipPrimitive.Content>
-                              </TooltipPrimitive.Root>
-                            </TooltipPrimitive.Provider>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => viewOrderDetails(order)}>
-                                  <Eye className="h-4 w-4 mr-2" />
-                                  Voir détails
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => printOrder(order)}>
-                                  <Printer className="h-4 w-4 mr-2" />
-                                  Imprimer
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  className="text-red-600 focus:text-red-600"
-                                  onClick={() => deleteOrder(order.id)}
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Supprimer
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </motion.tr>
-                      ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-            </div>
-            {filteredOrders.length > 10 && (
-              <div className="mt-4 text-center">
-                <Button variant="outline" size="sm">
-                  Voir toutes les commandes
-                </Button>
-              </div>
+      {/* ═══ Orders Table ═══ */}
+      <div className="card-premium">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[rgba(255,107,53,0.06)]">
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-[#fcfcfc]">Commandes</h3>
+            {filteredOrders.length > 0 && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-[rgba(255,107,53,0.1)] text-[#ff6b35] font-medium">{filteredOrders.length}</span>
             )}
-          </CardContent>
-        </Card>
-      </motion.div>
+          </div>
+          <Badge variant="secondary" className="flex items-center gap-1 text-xs">
+            {statutFilter === 'all' ? 'Tous les statuts' : statutFilter}
+            <ChevronDown className="h-3 w-3" />
+          </Badge>
+        </div>
+        <div className="overflow-x-auto p-0">
+          <table className="table-premium">
+            <thead>
+              <tr>
+                <th>Client</th>
+                <th>Wilaya</th>
+                <th>Produits</th>
+                <th className="text-right">Total</th>
+                <th>Statut</th>
+                <th>Date</th>
+                <th className="text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredOrders.length === 0 ? (
+                <tr>
+                  <td colSpan={7}>
+                    <EmptyState
+                      icon={Package}
+                      title="Aucune commande"
+                      description="Aucune commande trouvée pour cette période. Essayez de modifier les filtres."
+                    />
+                  </td>
+                </tr>
+              ) : (
+                filteredOrders
+                  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                  .slice(0, 10)
+                  .map((order) => (
+                    <tr key={order.id}>
+                      <td>
+                        <div className="flex items-center gap-2.5">
+                          <Avatar className="h-8 w-8 ring-1 ring-[rgba(255,107,53,0.1)]">
+                            <AvatarImage
+                              src={`https://api.dicebear.com/7.x/initials/svg?seed=${order.nom_client}`}
+                              alt={order.nom_client}
+                            />
+                            <AvatarFallback className="bg-[#120f1e] text-xs">{order.nom_client.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium text-sm text-[#fcfcfc]">{order.nom_client}</p>
+                            <p className="text-xs text-[#64647a]">{order.telephone}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <Badge variant="outline" className="bg-[rgba(255,107,53,0.04)] text-[#9d9db5] border-[rgba(255,107,53,0.1)] text-xs">
+                          {order.wilaya}
+                        </Badge>
+                      </td>
+                      <td>
+                        <TooltipPrimitive.Provider>
+                          <TooltipPrimitive.Root>
+                            <TooltipPrimitive.Trigger asChild>
+                              <Badge variant="secondary" className="max-w-[180px] truncate cursor-pointer text-xs">
+                                {order.produits}
+                              </Badge>
+                            </TooltipPrimitive.Trigger>
+                            <TooltipPrimitive.Content side="top" className="bg-[#0f0a1e] border border-[rgba(255,107,53,0.15)] rounded-lg p-2 text-xs text-[#9d9db5]">
+                              <p>{order.produits}</p>
+                              {order.couleur && <p className="mt-1">Couleur: {order.couleur}</p>}
+                              {order.taille && <p>Taille: {order.taille}</p>}
+                            </TooltipPrimitive.Content>
+                          </TooltipPrimitive.Root>
+                        </TooltipPrimitive.Provider>
+                      </td>
+                      <td className="text-right font-semibold text-[#fcfcfc]">{order.total.toLocaleString()} DA</td>
+                      <td>
+                        <Select defaultValue={order.statut} onValueChange={(value) => updateOrderStatus(order.id, value)}>
+                          <SelectTrigger className="w-[120px] h-7 text-xs bg-[#0f0a1e] border-[rgba(255,107,53,0.1)]">
+                            <SelectValue placeholder="Statut" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="en_attente">En attente</SelectItem>
+                            <SelectItem value="confirmée">Confirmée</SelectItem>
+                            <SelectItem value="livrée">Livrée</SelectItem>
+                            <SelectItem value="annulée">Annulée</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </td>
+                      <td>
+                        <TooltipPrimitive.Provider>
+                          <TooltipPrimitive.Root>
+                            <TooltipPrimitive.Trigger asChild>
+                              <p className="text-xs text-[#64647a] cursor-pointer">
+                                {formatDistanceToNow(parseISO(order.created_at), { addSuffix: true, locale: fr })}
+                              </p>
+                            </TooltipPrimitive.Trigger>
+                            <TooltipPrimitive.Content side="top" className="bg-[#0f0a1e] border border-[rgba(255,107,53,0.15)] rounded-lg p-2 text-xs text-[#9d9db5]">
+                              <p>{format(parseISO(order.created_at), "PPpp", { locale: fr })}</p>
+                            </TooltipPrimitive.Content>
+                          </TooltipPrimitive.Root>
+                        </TooltipPrimitive.Provider>
+                      </td>
+                      <td className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7">
+                              <MoreHorizontal className="h-3.5 w-3.5" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-[#0f0a1e] border-[rgba(255,107,53,0.15)]">
+                            <DropdownMenuItem onClick={() => router.push(`/orders/${order.id}`)}>
+                              <Eye className="h-3.5 w-3.5 mr-2" /> Voir
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              const w = window.open("", "_blank")
+                              if (w) {
+                                w.document.write(`<html><head><title>Commande #${order.id}</title><style>body{font-family:Arial;padding:20px;color:#333}h1{color:#ff6b35}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px}th{background:#f5f5f5}</style></head><body><h1>Commande #${order.id}</h1><p><strong>Client:</strong> ${order.nom_client}</p><p><strong>Téléphone:</strong> ${order.telephone}</p><p><strong>Wilaya:</strong> ${order.wilaya}</p><p><strong>Produits:</strong> ${order.produits}</p><p><strong>Total:</strong> ${order.total.toLocaleString()} DA</p></body></html>`)
+                                w.document.close()
+                                w.print()
+                              }
+                            }}>
+                              <Printer className="h-3.5 w-3.5 mr-2" /> Imprimer
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator className="bg-[rgba(255,107,53,0.1)]" />
+                            <DropdownMenuItem className="text-[#ef4444] focus:text-[#ef4444]" onClick={() => deleteOrder(order.id)}>
+                              <Trash2 className="h-3.5 w-3.5 mr-2" /> Supprimer
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        {filteredOrders.length > 10 && (
+          <div className="text-center py-4 border-t border-[rgba(255,107,53,0.06)]">
+            <Button variant="ghost" size="sm" className="text-[#ff6b35] text-xs" onClick={() => router.push('/orders')}>
+              Voir toutes les commandes <ArrowUpRight className="h-3 w-3 ml-1" />
+            </Button>
+          </div>
+        )}
+      </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.8 }}
-      >
-        <Card>
-          <CardHeader>
-            <CardTitle>Actions rapides</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <Button
-                variant="outline"
-                className="h-20 flex flex-col items-center justify-center gap-2"
-                onClick={() => router.push('/produits?action=add')}
-              >
-                <Package className="h-6 w-6 text-[#ff6b35]" />
-                <span className="text-sm">Ajouter produit</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="h-20 flex flex-col items-center justify-center gap-2"
-                onClick={exportData}
-              >
-                <Download className="h-6 w-6 text-[#ff6b35]" />
-                <span className="text-sm">Exporter données</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="h-20 flex flex-col items-center justify-center gap-2"
-                onClick={() => router.push('/settings')}
-              >
-                <Settings className="h-6 w-6 text-[#ff6b35]" />
-                <span className="text-sm">Paramètres</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="h-20 flex flex-col items-center justify-center gap-2"
-                onClick={() => router.push('/chatbot')}
-              >
-                <Bot className="h-6 w-6 text-[#ff6b35]" />
-                <span className="text-sm">Configurer chatbot</span>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+      {/* ═══ Quick Actions ═══ */}
+      <div className="card-premium !p-6">
+        <h3 className="text-sm font-semibold text-[#fcfcfc] mb-4 flex items-center gap-2">
+          <Zap className="h-4 w-4 text-[#ff6b35]" />
+          Actions rapides
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: "Ajouter produit", icon: Package, href: '/produits?action=add' },
+            { label: "Exporter données", icon: Download, action: exportData },
+            { label: "Paramètres", icon: Bot, href: '/settings' },
+            { label: "Chatbot", icon: MessageSquare, href: '/chatbot' },
+          ].map((item, i) => (
+            <motion.button
+              key={i}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => item.href ? router.push(item.href) : item.action?.()}
+              className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-[rgba(255,107,53,0.08)] hover:border-[rgba(255,107,53,0.25)] bg-[rgba(255,107,53,0.02)] hover:bg-[rgba(255,107,53,0.05)] transition-all duration-200 cursor-pointer"
+            >
+              <div className="w-10 h-10 rounded-xl bg-[rgba(255,107,53,0.1)] flex items-center justify-center">
+                <item.icon className="h-5 w-5 text-[#ff6b35]" />
+              </div>
+              <span className="text-xs font-medium text-[#9d9db5]">{item.label}</span>
+            </motion.button>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

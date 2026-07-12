@@ -31,7 +31,6 @@
     "motion": "^12.40.0",
     "next": "16.2.7",
     "next-cloudinary": "^6.17.5",
-    "node-fetch": "^3.3.2",
     "openai": "^6.44.0",
     "pg": "^8.21.0",
     "react": "19.2.4",

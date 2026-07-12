@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   BarChart,
   Bar,
@@ -19,9 +18,46 @@ import {
 } from "recharts"
 import { format, subDays, isSameDay, parseISO, subWeeks, startOfWeek, endOfWeek, subMonths, startOfMonth, endOfMonth } from "date-fns"
 import { fr } from "date-fns/locale"
+import { DollarSign, ShoppingCart, MessageCircle, TrendingUp, Package, MapPin, Clock, BarChart3 } from "lucide-react"
 import type { Order, Conversation } from "@/lib/types"
+import { LoadingSkeleton, EmptyState } from "@/components/PageStates"
 
 const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"]
+
+/* ── Premium custom tooltip for all charts ── */
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null
+  return (
+    <div
+      style={{
+        background: "rgba(15,10,30,0.95)",
+        border: "1px solid rgba(255,107,53,0.3)",
+        borderRadius: "8px",
+        padding: "12px 16px",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.4), 0 0 20px rgba(255,107,53,0.08)",
+        backdropFilter: "blur(12px)",
+      }}
+    >
+      <p style={{ color: "#9d9db5", fontSize: "12px", marginBottom: "6px", fontWeight: 500 }}>
+        {label}
+      </p>
+      {payload.map((entry: any, i: number) => (
+        <p
+          key={i}
+          style={{
+            color: "#fcfcfc",
+            fontSize: "14px",
+            fontWeight: 600,
+            marginBottom: i < payload.length - 1 ? "4px" : 0,
+          }}
+        >
+          <span style={{ color: entry.color || "#ff6b35", marginRight: "6px" }}>●</span>
+          {entry.name}: {typeof entry.value === "number" ? entry.value.toLocaleString() : entry.value}
+        </p>
+      ))}
+    </div>
+  )
+}
 
 export default function AnalytiquesPage() {
   const [orders, setOrders] = useState<Order[]>([])
@@ -114,35 +150,40 @@ export default function AnalytiquesPage() {
   const totalRevenue = confirmedOrders.reduce((sum, o) => sum + o.total, 0)
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Chargement...</p>
-      </div>
-    )
+    return <LoadingSkeleton />
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-8 animate-fade-in">
+      {/* ═══ Page Header ═══ */}
+      <div className="page-header flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Analytiques</h1>
-          <p className="text-muted-foreground">
-            Analysez les performances de votre boutique
-          </p>
+          <h1>Analytiques</h1>
+          <p>Analysez les performances de votre boutique</p>
         </div>
-        <div className="flex gap-2">
+        <div
+          className="flex gap-1 p-1 rounded-xl self-start"
+          style={{
+            background: "rgba(255,107,53,0.04)",
+            border: "1px solid rgba(255,107,53,0.08)",
+          }}
+        >
           <button
             onClick={() => setPeriod("semaine")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              period === "semaine" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-accent"
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+              period === "semaine"
+                ? "btn-gradient shadow-lg"
+                : "text-[#64647a] hover:text-[#9d9db5] hover:bg-[rgba(255,107,53,0.04)]"
             }`}
           >
             4 semaines
           </button>
           <button
             onClick={() => setPeriod("mois")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              period === "mois" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-accent"
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+              period === "mois"
+                ? "btn-gradient shadow-lg"
+                : "text-[#64647a] hover:text-[#9d9db5] hover:bg-[rgba(255,107,53,0.04)]"
             }`}
           >
             6 mois
@@ -150,69 +191,90 @@ export default function AnalytiquesPage() {
         </div>
       </div>
 
+      {/* ═══ Premium Stat Cards ═══ */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Chiffre d'affaires</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-[#ff6b35]">{totalRevenue.toLocaleString()} DA</div>
-            <p className="text-xs text-muted-foreground">Période sélectionnée</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Commandes confirmées</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-[#ff6b35]">{totalOrders}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Conversations</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-[#ff6b35]">{totalConversations}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Taux de conversion</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-[#ff6b35]">{conversionRate}%</div>
-            <p className="text-xs text-muted-foreground">Convers → Commandes</p>
-          </CardContent>
-        </Card>
+        <div className="stat-card" style={{ animation: "fade-up 500ms var(--ease-out) both" }}>
+          <div className="stat-icon">
+            <DollarSign className="h-5 w-5" />
+          </div>
+          <div className="stat-value">{totalRevenue.toLocaleString()} DA</div>
+          <div className="stat-label">Chiffre d&apos;affaires</div>
+          <p className="text-xs mt-1" style={{ color: "#64647a" }}>Période sélectionnée</p>
+        </div>
+        <div className="stat-card" style={{ animation: "fade-up 500ms var(--ease-out) both", animationDelay: "100ms" }}>
+          <div className="stat-icon">
+            <ShoppingCart className="h-5 w-5" />
+          </div>
+          <div className="stat-value">{totalOrders}</div>
+          <div className="stat-label">Commandes confirmées</div>
+        </div>
+        <div className="stat-card" style={{ animation: "fade-up 500ms var(--ease-out) both", animationDelay: "200ms" }}>
+          <div className="stat-icon">
+            <MessageCircle className="h-5 w-5" />
+          </div>
+          <div className="stat-value">{totalConversations}</div>
+          <div className="stat-label">Conversations</div>
+        </div>
+        <div className="stat-card" style={{ animation: "fade-up 500ms var(--ease-out) both", animationDelay: "300ms" }}>
+          <div className="stat-icon">
+            <TrendingUp className="h-5 w-5" />
+          </div>
+          <div className="stat-value">{conversionRate}%</div>
+          <div className="stat-label">Taux de conversion</div>
+          <p className="text-xs mt-1" style={{ color: "#64647a" }}>Convers → Commandes</p>
+        </div>
       </div>
 
+      {/* ═══ Charts Grid ═══ */}
       <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Produits les plus vendus</CardTitle>
-          </CardHeader>
-          <CardContent>
+        {/* ── Produits les plus vendus ── */}
+        <div className="chart-container">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,107,53,0.1)", border: "1px solid rgba(255,107,53,0.1)" }}>
+              <Package className="h-[18px] w-[18px]" style={{ color: "#ff6b35" }} />
+            </div>
+            <h3 style={{ color: "#fcfcfc", fontWeight: 600, fontSize: "1rem" }}>Produits les plus vendus</h3>
+          </div>
+          {topProducts.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={topProducts} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 12 }} />
-                <Tooltip />
+              <BarChart data={topProducts} layout="vertical" margin={{ left: 10, right: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,107,53,0.06)" />
+                <XAxis
+                  type="number"
+                  tick={{ fill: "#64647a", fontSize: 12 }}
+                  axisLine={{ stroke: "rgba(255,107,53,0.08)" }}
+                  tickLine={false}
+                />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  width={100}
+                  tick={{ fill: "#64647a", fontSize: 12 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255,107,53,0.04)" }} />
                 <Bar dataKey="value" fill="hsl(var(--chart-1))" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
-            {topProducts.length === 0 && (
-              <p className="text-center text-muted-foreground py-8">Aucune donnée</p>
-            )}
-          </CardContent>
-        </Card>
+          ) : (
+            <EmptyState
+              icon={Package}
+              title="Aucun produit vendu"
+              description="Les produits les plus vendus apparaîtront ici dès les premières commandes."
+            />
+          )}
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Wilayas les plus actives</CardTitle>
-          </CardHeader>
-          <CardContent>
+        {/* ── Wilayas les plus actives ── */}
+        <div className="chart-container">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,107,53,0.1)", border: "1px solid rgba(255,107,53,0.1)" }}>
+              <MapPin className="h-[18px] w-[18px]" style={{ color: "#ff6b35" }} />
+            </div>
+            <h3 style={{ color: "#fcfcfc", fontWeight: 600, fontSize: "1rem" }}>Wilayas les plus actives</h3>
+          </div>
+          {topWilayas.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
@@ -225,62 +287,100 @@ export default function AnalytiquesPage() {
                   label={({ name, percent }) =>
                     `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`
                   }
+                  labelLine={{ stroke: "rgba(255,107,53,0.15)" }}
                 >
                   {topWilayas.map((_, i) => (
                     <Cell key={i} fill={COLORS[i % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip content={<CustomTooltip />} />
               </PieChart>
             </ResponsiveContainer>
-            {topWilayas.length === 0 && (
-              <p className="text-center text-muted-foreground py-8">Aucune donnée</p>
-            )}
-          </CardContent>
-        </Card>
+          ) : (
+            <EmptyState
+              icon={MapPin}
+              title="Aucune wilaya"
+              description="La répartition géographique apparaîtra une fois les premières commandes confirmées."
+            />
+          )}
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Activité horaire des conversations</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={hourlyData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="hour" tick={{ fontSize: 11 }} interval={2} />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="conversations" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        {/* ── Activité horaire des conversations ── */}
+        <div className="chart-container">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,107,53,0.1)", border: "1px solid rgba(255,107,53,0.1)" }}>
+              <Clock className="h-[18px] w-[18px]" style={{ color: "#ff6b35" }} />
+            </div>
+            <h3 style={{ color: "#fcfcfc", fontWeight: 600, fontSize: "1rem" }}>Activité horaire des conversations</h3>
+          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={hourlyData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,107,53,0.06)" vertical={false} />
+              <XAxis
+                dataKey="hour"
+                tick={{ fill: "#64647a", fontSize: 12 }}
+                interval={2}
+                axisLine={{ stroke: "rgba(255,107,53,0.08)" }}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fill: "#64647a", fontSize: 12 }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255,107,53,0.04)" }} />
+              <Bar dataKey="conversations" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Chiffre d'affaires par période</CardTitle>
-          </CardHeader>
-          <CardContent>
+        {/* ── Chiffre d'affaires par période ── */}
+        <div className="chart-container">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,107,53,0.1)", border: "1px solid rgba(255,107,53,0.1)" }}>
+              <BarChart3 className="h-[18px] w-[18px]" style={{ color: "#ff6b35" }} />
+            </div>
+            <h3 style={{ color: "#fcfcfc", fontWeight: 600, fontSize: "1rem" }}>Chiffre d&apos;affaires par période</h3>
+          </div>
+          {revenueData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={revenueData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                <YAxis />
-                <Tooltip />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,107,53,0.06)" vertical={false} />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fill: "#64647a", fontSize: 12 }}
+                  axisLine={{ stroke: "rgba(255,107,53,0.08)" }}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fill: "#64647a", fontSize: 12 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip content={<CustomTooltip />} />
                 <Line
                   type="monotone"
                   dataKey="value"
                   stroke="hsl(var(--chart-4))"
                   strokeWidth={2}
-                  dot={{ fill: "hsl(var(--chart-4))" }}
+                  dot={{ fill: "hsl(var(--chart-4))", strokeWidth: 0, r: 4 }}
+                  activeDot={{
+                    r: 6,
+                    fill: "hsl(var(--chart-4))",
+                    stroke: "rgba(15,10,30,0.95)",
+                    strokeWidth: 2,
+                  }}
                 />
               </LineChart>
             </ResponsiveContainer>
-            {revenueData.length === 0 && (
-              <p className="text-center text-muted-foreground py-8">Aucune donnée</p>
-            )}
-          </CardContent>
-        </Card>
+          ) : (
+            <EmptyState
+              icon={BarChart3}
+              title="Aucun revenu"
+              description="Le chiffre d'affaires apparaîtra une fois les premières commandes confirmées."
+            />
+          )}
+        </div>
       </div>
     </div>
   )

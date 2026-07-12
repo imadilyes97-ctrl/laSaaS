@@ -23,10 +23,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Plus, Pencil, Trash2, ImageUp, Package, AlertTriangle, AlertCircle, Search, X, Loader2 } from "lucide-react"
+import { Plus, Pencil, Trash2, ImageUp, Package, AlertTriangle, AlertCircle, Search, X, Loader2, Box, ShoppingBag, Truck, Palette, Ruler, Camera, Sparkles } from "lucide-react"
 import { v4 as uuidv4 } from "uuid"
 import type { Product } from "@/lib/types"
 import { useCloudinaryUpload } from "@/hooks/useCloudinaryUpload"
+import { LoadingSkeleton, EmptyState } from "@/components/PageStates"
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
 const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"]
@@ -307,416 +308,668 @@ export default function ProduitsPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="flex flex-col items-center gap-2">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          <p className="text-muted-foreground">Chargement...</p>
-        </div>
-      </div>
-    )
+    return <LoadingSkeleton />
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Produits</h1>
-          <p className="text-muted-foreground">{produits.length} produit(s)</p>
-        </div>
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="relative flex-1 sm:w-64">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Rechercher par nom, taille, couleur..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 pr-8"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-2 top-2.5 text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
+    <div className="space-y-8 animate-fade-in">
+      {/* ═══ HEADER ═══ */}
+      <div className="page-header">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h1>Produits</h1>
+            <p>{produits.length} produit{produits.length > 1 ? "s" : ""} dans votre catalogue</p>
           </div>
-          <Dialog open={open} onOpenChange={handleDialogClose}>
-              <DialogTrigger asChild>
-                <Button onClick={() => { setEditProduct(null); setForm(defaultForm); setDescriptionVisuelle(null); setPhotoItemsProduit([]); setPhotoItemsReelles([]) }}>
-                <Plus className="h-4 w-4 mr-2" />
-                Ajouter
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-lg">
-              <DialogHeader>
-                <DialogTitle>
-                  {editProduct ? "Modifier le produit" : "Nouveau produit"}
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                {/* 📸 Section Photos officielles */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <ImageUp className="h-4 w-4 text-[#ff6b35]" />
-                    <Label className="font-semibold">Photos officielles du produit</Label>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Photos sur fond blanc ou studio — Max 5 photos</p>
-
-                  {photoItemsProduit.length > 0 && (
-                    <div className="grid grid-cols-3 gap-2">
-                      {photoItemsProduit.map((item, index) => (
-                        <div key={item.id} className="relative group aspect-square rounded-lg border bg-muted overflow-hidden">
-                          <img src={item.uploadedUrl || item.previewUrl} alt={`Officielle ${index + 1}`} className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/20" onClick={() => removePhoto(item.id, setPhotoItemsProduit)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                          {item.uploading && (
-                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                              <Loader2 className="h-5 w-5 animate-spin text-white" />
-                            </div>
-                          )}
-                          <div className="absolute top-1 left-1 bg-black/60 text-white text-xs rounded px-1.5 py-0.5">{index + 1}</div>
-                        </div>
-                      ))}
-                      <button type="button" onClick={() => fileRefProduit.current?.click()} className="aspect-square rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-[#ff6b35]/50 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-[#ff6b35] transition-colors">
-                        <ImageUp className="h-5 w-5" />
-                        <span className="text-xs">Ajouter</span>
-                      </button>
-                    </div>
-                  )}
-
-                  {photoItemsProduit.length === 0 && (
-                    <div onClick={() => fileRefProduit.current?.click()} className="flex items-center gap-4 p-4 rounded-lg border-2 border-dashed border-muted-foreground/30 cursor-pointer hover:border-[#ff6b35]/50 transition-colors">
-                      <div className="w-14 h-14 bg-muted rounded-lg flex items-center justify-center shrink-0">
-                        <ImageUp className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium">Ajouter des photos officielles</span>
-                        <span className="text-xs text-muted-foreground">JPG, PNG, WEBP — max 5MB par photo</span>
-                      </div>
-                    </div>
-                  )}
-
-                  <input ref={fileRefProduit} type="file" multiple accept=".jpg,.jpeg,.png,.webp" className="hidden" onChange={handleProduitSelect} />
-                </div>
-
-                {/* 🤳 Section Photos réelles */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <ImageUp className="h-4 w-4 text-amber-400" />
-                    <Label className="font-semibold">Photos réelles <span className="text-xs font-normal text-muted-foreground">(optionnel)</span></Label>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Photos portées par des modèles ou en situation réelle — Max 5 photos</p>
-
-                  {photoItemsReelles.length > 0 && (
-                    <div className="grid grid-cols-3 gap-2">
-                      {photoItemsReelles.map((item, index) => (
-                        <div key={item.id} className="relative group aspect-square rounded-lg border bg-muted overflow-hidden">
-                          <img src={item.uploadedUrl || item.previewUrl} alt={`Réelle ${index + 1}`} className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/20" onClick={() => removePhoto(item.id, setPhotoItemsReelles)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                          {item.uploading && (
-                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                              <Loader2 className="h-5 w-5 animate-spin text-white" />
-                            </div>
-                          )}
-                          <div className="absolute top-1 left-1 bg-black/60 text-white text-xs rounded px-1.5 py-0.5">{index + 1}</div>
-                        </div>
-                      ))}
-                      <button type="button" onClick={() => fileRefReelles.current?.click()} className="aspect-square rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-[#ff6b35]/50 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-[#ff6b35] transition-colors">
-                        <ImageUp className="h-5 w-5" />
-                        <span className="text-xs">Ajouter</span>
-                      </button>
-                    </div>
-                  )}
-
-                  {photoItemsReelles.length === 0 && (
-                    <div onClick={() => fileRefReelles.current?.click()} className="flex items-center gap-4 p-4 rounded-lg border-2 border-dashed border-muted-foreground/30 cursor-pointer hover:border-[#ff6b35]/50 transition-colors">
-                      <div className="w-14 h-14 bg-muted rounded-lg flex items-center justify-center shrink-0">
-                        <ImageUp className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium">Ajouter des photos réelles (modèles)</span>
-                        <span className="text-xs text-muted-foreground">JPG, PNG, WEBP — max 5MB par photo</span>
-                      </div>
-                    </div>
-                  )}
-
-                  <input ref={fileRefReelles} type="file" multiple accept=".jpg,.jpeg,.png,.webp" className="hidden" onChange={handleReellesSelect} />
-                </div>
-
-                {uploadError && (
-                  <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
-                    <p className="text-sm text-destructive flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3 shrink-0" />
-                      {uploadError}
-                    </p>
-                  </div>
-                )}
-
-                {cloudinaryUpload.state.uploading && (
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>Upload en cours...</span>
-                      <span>{cloudinaryUpload.state.progress}%</span>
-                    </div>
-                    <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-[#ff6b35] rounded-full transition-all duration-300 ease-out"
-                        style={{ width: `${cloudinaryUpload.state.progress}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <Label htmlFor="nom">Nom du produit</Label>
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            {/* Premium Search Bar */}
+            <div className="relative flex-1 sm:w-72">
+              <div className="glass-light rounded-xl transition-all duration-200 ease-out focus-within:border-[#ff6b35]/40 focus-within:shadow-[0_0_20px_rgba(255,107,53,0.06)]">
+                <div className="relative flex items-center">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: "var(--textMuted)" }} />
                   <Input
-                    id="nom"
-                    value={form.nom}
-                    onChange={(e) => setForm((f) => ({ ...f, nom: e.target.value }))}
-                    placeholder="Ex: Robe d'été"
+                    placeholder="Rechercher par nom, taille, couleur..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      boxShadow: "none",
+                      paddingLeft: "2.25rem",
+                      paddingRight: searchQuery ? "2rem" : "0.75rem",
+                      color: "var(--textPrimary)",
+                    }}
+                    className="h-10 text-sm"
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Input
-                    id="description"
-                    value={form.description}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, description: e.target.value }))
-                    }
-                    placeholder="Description du produit"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="prix">Prix (DA)</Label>
-                    <Input
-                      id="prix"
-                      type="number"
-                      value={form.prix || ""}
-                      onChange={(e) =>
-                        setForm((f) => ({ ...f, prix: Number(e.target.value) }))
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="stock">Stock</Label>
-                    <Input
-                      id="stock"
-                      type="number"
-                      value={form.stock}
-                      onChange={(e) =>
-                        setForm((f) => ({ ...f, stock: Number(e.target.value) }))
-                      }
-                    />
-                  </div>
-                </div>
-
-                {/* 🚚 Section Prix de livraison */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <svg className="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
-                    <Label className="font-semibold">🚚 Prix de livraison</Label>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Laissez 0 si livraison gratuite ou non disponible</p>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="livraison_domicile">À domicile (DA)</Label>
-                      <Input
-                        id="livraison_domicile"
-                        type="number"
-                        min={0}
-                        value={form.livraison_domicile}
-                        onChange={(e) =>
-                          setForm((f) => ({ ...f, livraison_domicile: Number(e.target.value) }))
-                        }
-                        placeholder="0"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="livraison_bureau">Au bureau (DA)</Label>
-                      <Input
-                        id="livraison_bureau"
-                        type="number"
-                        min={0}
-                        value={form.livraison_bureau}
-                        onChange={(e) =>
-                          setForm((f) => ({ ...f, livraison_bureau: Number(e.target.value) }))
-                        }
-                        placeholder="0"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="tailles">Tailles (séparées par des virgules)</Label>
-                  <Input
-                    id="tailles"
-                    value={form.tailles}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, tailles: e.target.value }))
-                    }
-                    placeholder="S, M, L, XL"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="couleurs">Couleurs (séparées par des virgules)</Label>
-                  <Input
-                    id="couleurs"
-                    value={form.couleurs}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, couleurs: e.target.value }))
-                    }
-                    placeholder="Rouge, Bleu, Noir"
-                  />
-                </div>
-                {saveError && (
-                  <p className="text-sm text-destructive flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3 shrink-0" />
-                    {saveError}
-                  </p>
-                )}
-                <Button onClick={handleSave} className="w-full" disabled={!form.nom || saving}>
-                  {saving ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      {editProduct ? "Enregistrement..." : "Ajout..."}
-                    </>
-                  ) : (
-                    editProduct ? "Enregistrer" : "Ajouter"
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 transition-all duration-200 ease-out"
+                      style={{ color: "var(--textMuted)" }}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
                   )}
-                </Button>
+                </div>
               </div>
-            </DialogContent>
-          </Dialog>
+            </div>
+
+            {/* Premium Add Button */}
+            <Dialog open={open} onOpenChange={handleDialogClose}>
+              <DialogTrigger asChild>
+                <Button
+                  onClick={() => { setEditProduct(null); setForm(defaultForm); setDescriptionVisuelle(null); setPhotoItemsProduit([]); setPhotoItemsReelles([]) }}
+                  className="btn-gradient gap-2"
+                  style={{ borderRadius: "var(--radius-md)" }}
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Nouveau produit</span>
+                </Button>
+              </DialogTrigger>
+
+              {/* ═══ DIALOG — Premium Modal ═══ */}
+              <DialogContent className="dialog-content-premium max-w-2xl overflow-y-auto max-h-[90vh]">
+                <DialogHeader className="pb-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "var(--primaryDim)", border: "1px solid var(--border)" }}>
+                      {editProduct ? (
+                        <Pencil className="h-5 w-5" style={{ color: "var(--primary)" }} />
+                      ) : (
+                        <Sparkles className="h-5 w-5" style={{ color: "var(--primary)" }} />
+                      )}
+                    </div>
+                    <div>
+                      <DialogTitle style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1.35rem", letterSpacing: "-0.01em", color: "var(--textPrimary)" }}>
+                        {editProduct ? "Modifier le produit" : "Nouveau produit"}
+                      </DialogTitle>
+                      <p style={{ fontSize: "0.8rem", color: "var(--textMuted)", marginTop: "0.125rem" }}>
+                        {editProduct ? "Modifiez les details de votre produit" : "Ajoutez un nouveau produit a votre catalogue"}
+                      </p>
+                    </div>
+                  </div>
+                </DialogHeader>
+
+                <div className="space-y-6 pt-2">
+                  {/* ════════════════════════════════════ */}
+                  {/* SECTION 1 — Photos du produit        */}
+                  {/* ════════════════════════════════════ */}
+                  <div className="stat-card">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Camera className="h-4 w-4" style={{ color: "var(--primary)" }} />
+                      <span className="text-sm font-semibold" style={{ color: "var(--textPrimary)" }}>Photos officielles</span>
+                      <span className="tag text-[10px]" style={{ marginLeft: "auto" }}>Studio</span>
+                    </div>
+                    <p className="text-xs mb-3" style={{ color: "var(--textMuted)" }}>Photos sur fond blanc ou studio — Max 5 photos</p>
+
+                    {photoItemsProduit.length > 0 && (
+                      <div className="grid grid-cols-3 gap-2">
+                        {photoItemsProduit.map((item, index) => (
+                          <div key={item.id} className="product-card rounded-lg" style={{ aspectRatio: "1" }}>
+                            <div className="product-image rounded-lg" style={{ aspectRatio: "1" }}>
+                              <img src={item.uploadedUrl || item.previewUrl} alt={`Officielle ${index + 1}`} className="w-full h-full object-cover" />
+                              <div className="product-overlay rounded-lg" />
+                              <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-all duration-200 ease-out z-10">
+                                <button
+                                  type="button"
+                                  onClick={() => removePhoto(item.id, setPhotoItemsProduit)}
+                                  className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ease-out hover:scale-110"
+                                  style={{ background: "rgba(239, 68, 68, 0.8)", color: "white" }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                              {item.uploading && (
+                                <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(6, 3, 11, 0.7)" }}>
+                                  <Loader2 className="h-5 w-5 animate-spin" style={{ color: "var(--primary)" }} />
+                                </div>
+                              )}
+                              <div className="absolute top-1.5 left-1.5 tag text-[10px] px-1.5 py-0.5" style={{ zIndex: 5 }}>
+                                {index + 1}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        {photoItemsProduit.length < 5 && (
+                          <button
+                            type="button"
+                            onClick={() => fileRefProduit.current?.click()}
+                            className="aspect-square rounded-lg transition-all duration-200 ease-out flex flex-col items-center justify-center gap-1.5"
+                            style={{
+                              border: "2px dashed var(--border)",
+                              background: "rgba(255, 107, 53, 0.02)",
+                              color: "var(--textMuted)",
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.borderColor = "var(--borderHover)"
+                              e.currentTarget.style.color = "var(--primary)"
+                              e.currentTarget.style.background = "var(--primaryDim)"
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.borderColor = "var(--border)"
+                              e.currentTarget.style.color = "var(--textMuted)"
+                              e.currentTarget.style.background = "rgba(255, 107, 53, 0.02)"
+                            }}
+                          >
+                            <ImageUp className="h-5 w-5" />
+                            <span className="text-xs font-medium">Ajouter</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {photoItemsProduit.length === 0 && (
+                      <div
+                        onClick={() => fileRefProduit.current?.click()}
+                        className="flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all duration-200 ease-out group"
+                        style={{
+                          border: "2px dashed var(--border)",
+                          background: "rgba(255, 107, 53, 0.02)",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = "var(--borderHover)"
+                          e.currentTarget.style.background = "var(--primaryDim)"
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = "var(--border)"
+                          e.currentTarget.style.background = "rgba(255, 107, 53, 0.02)"
+                        }}
+                      >
+                        <div className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 ease-out" style={{ background: "var(--primaryDim)", border: "1px solid var(--border)" }}>
+                          <ImageUp className="h-5 w-5" style={{ color: "var(--primary)" }} />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium transition-all duration-200 ease-out" style={{ color: "var(--textPrimary)" }}>Ajouter des photos officielles</span>
+                          <span className="text-xs" style={{ color: "var(--textMuted)" }}>JPG, PNG, WEBP — max 5MB par photo</span>
+                        </div>
+                      </div>
+                    )}
+
+                    <input ref={fileRefProduit} type="file" multiple accept=".jpg,.jpeg,.png,.webp" className="hidden" onChange={handleProduitSelect} />
+                  </div>
+
+                  {/* ════════════════════════════════════ */}
+                  {/* SECTION 2 — Photos réelles           */}
+                  {/* ════════════════════════════════════ */}
+                  <div className="stat-card">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Camera className="h-4 w-4" style={{ color: "var(--accent)" }} />
+                      <span className="text-sm font-semibold" style={{ color: "var(--textPrimary)" }}>Photos réelles</span>
+                      <span className="tag tag-accent text-[10px]" style={{ marginLeft: "auto" }}>Optionnel</span>
+                    </div>
+                    <p className="text-xs mb-3" style={{ color: "var(--textMuted)" }}>Photos portees par des modeles ou en situation reelle — Max 5 photos</p>
+
+                    {photoItemsReelles.length > 0 && (
+                      <div className="grid grid-cols-3 gap-2">
+                        {photoItemsReelles.map((item, index) => (
+                          <div key={item.id} className="product-card rounded-lg" style={{ aspectRatio: "1" }}>
+                            <div className="product-image rounded-lg" style={{ aspectRatio: "1" }}>
+                              <img src={item.uploadedUrl || item.previewUrl} alt={`Reelle ${index + 1}`} className="w-full h-full object-cover" />
+                              <div className="product-overlay rounded-lg" />
+                              <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-all duration-200 ease-out z-10">
+                                <button
+                                  type="button"
+                                  onClick={() => removePhoto(item.id, setPhotoItemsReelles)}
+                                  className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ease-out hover:scale-110"
+                                  style={{ background: "rgba(239, 68, 68, 0.8)", color: "white" }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                              {item.uploading && (
+                                <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(6, 3, 11, 0.7)" }}>
+                                  <Loader2 className="h-5 w-5 animate-spin" style={{ color: "var(--accent)" }} />
+                                </div>
+                              )}
+                              <div className="absolute top-1.5 left-1.5 tag tag-accent text-[10px] px-1.5 py-0.5" style={{ zIndex: 5 }}>
+                                {index + 1}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        {photoItemsReelles.length < 5 && (
+                          <button
+                            type="button"
+                            onClick={() => fileRefReelles.current?.click()}
+                            className="aspect-square rounded-lg transition-all duration-200 ease-out flex flex-col items-center justify-center gap-1.5"
+                            style={{
+                              border: "2px dashed var(--border)",
+                              background: "rgba(124, 58, 237, 0.02)",
+                              color: "var(--textMuted)",
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.borderColor = "rgba(124, 58, 237, 0.3)"
+                              e.currentTarget.style.color = "var(--accent)"
+                              e.currentTarget.style.background = "var(--accentDim)"
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.borderColor = "var(--border)"
+                              e.currentTarget.style.color = "var(--textMuted)"
+                              e.currentTarget.style.background = "rgba(124, 58, 237, 0.02)"
+                            }}
+                          >
+                            <ImageUp className="h-5 w-5" />
+                            <span className="text-xs font-medium">Ajouter</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {photoItemsReelles.length === 0 && (
+                      <div
+                        onClick={() => fileRefReelles.current?.click()}
+                        className="flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all duration-200 ease-out group"
+                        style={{
+                          border: "2px dashed var(--border)",
+                          background: "rgba(124, 58, 237, 0.02)",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = "rgba(124, 58, 237, 0.3)"
+                          e.currentTarget.style.background = "var(--accentDim)"
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = "var(--border)"
+                          e.currentTarget.style.background = "rgba(124, 58, 237, 0.02)"
+                        }}
+                      >
+                        <div className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 ease-out" style={{ background: "var(--accentDim)", border: "1px solid rgba(124, 58, 237, 0.15)" }}>
+                          <ImageUp className="h-5 w-5" style={{ color: "var(--accent)" }} />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium transition-all duration-200 ease-out" style={{ color: "var(--textPrimary)" }}>Ajouter des photos reelles (modeles)</span>
+                          <span className="text-xs" style={{ color: "var(--textMuted)" }}>JPG, PNG, WEBP — max 5MB par photo</span>
+                        </div>
+                      </div>
+                    )}
+
+                    <input ref={fileRefReelles} type="file" multiple accept=".jpg,.jpeg,.png,.webp" className="hidden" onChange={handleReellesSelect} />
+                  </div>
+
+                  {/* Upload errors */}
+                  {uploadError && (
+                    <div className="flex items-center gap-2 p-3 rounded-xl" style={{ background: "var(--errorDim)", border: "1px solid rgba(239, 68, 68, 0.2)" }}>
+                      <AlertCircle className="h-4 w-4 shrink-0" style={{ color: "var(--error)" }} />
+                      <p className="text-sm" style={{ color: "var(--error)" }}>{uploadError}</p>
+                    </div>
+                  )}
+
+                  {/* Upload progress */}
+                  {cloudinaryUpload.state.uploading && (
+                    <div className="space-y-2 p-4 rounded-xl" style={{ background: "var(--bgCard)", border: "1px solid var(--border)" }}>
+                      <div className="flex items-center justify-between text-xs">
+                        <span style={{ color: "var(--textSecondary)" }}>Upload en cours...</span>
+                        <span className="font-medium" style={{ color: "var(--primary)" }}>{cloudinaryUpload.state.progress}%</span>
+                      </div>
+                      <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bgSecondary)" }}>
+                        <div
+                          className="h-full rounded-full transition-all duration-300 ease-out"
+                          style={{ width: `${cloudinaryUpload.state.progress}%`, background: "var(--gradientPrimary)" }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ════════════════════════════════════ */}
+                  {/* SECTION 3 — Informations de base     */}
+                  {/* ════════════════════════════════════ */}
+                  <div className="stat-card">
+                    <div className="flex items-center gap-2 mb-4">
+                      <ShoppingBag className="h-4 w-4" style={{ color: "var(--primary)" }} />
+                      <span className="text-sm font-semibold" style={{ color: "var(--textPrimary)" }}>Informations</span>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="nom" style={{ fontSize: "0.8rem", color: "var(--textSecondary)", fontWeight: 600, letterSpacing: "0.02em" }}>Nom du produit</Label>
+                        <Input
+                          id="nom"
+                          value={form.nom}
+                          onChange={(e) => setForm((f) => ({ ...f, nom: e.target.value }))}
+                          placeholder="Ex: Robe d'ete"
+                          className="select-trigger-premium h-10"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="description" style={{ fontSize: "0.8rem", color: "var(--textSecondary)", fontWeight: 600, letterSpacing: "0.02em" }}>Description</Label>
+                        <Input
+                          id="description"
+                          value={form.description}
+                          onChange={(e) =>
+                            setForm((f) => ({ ...f, description: e.target.value }))
+                          }
+                          placeholder="Description du produit"
+                          className="select-trigger-premium h-10"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ════════════════════════════════════ */}
+                  {/* SECTION 4 — Prix et Stock            */}
+                  {/* ════════════════════════════════════ */}
+                  <div className="stat-card">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Box className="h-4 w-4" style={{ color: "var(--primary)" }} />
+                      <span className="text-sm font-semibold" style={{ color: "var(--textPrimary)" }}>Prix & Stock</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="prix" style={{ fontSize: "0.8rem", color: "var(--textSecondary)", fontWeight: 600, letterSpacing: "0.02em" }}>Prix (DA)</Label>
+                        <Input
+                          id="prix"
+                          type="number"
+                          value={form.prix || ""}
+                          onChange={(e) =>
+                            setForm((f) => ({ ...f, prix: Number(e.target.value) }))
+                          }
+                          placeholder="0"
+                          className="select-trigger-premium h-10"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="stock" style={{ fontSize: "0.8rem", color: "var(--textSecondary)", fontWeight: 600, letterSpacing: "0.02em" }}>Stock</Label>
+                        <Input
+                          id="stock"
+                          type="number"
+                          value={form.stock}
+                          onChange={(e) =>
+                            setForm((f) => ({ ...f, stock: Number(e.target.value) }))
+                          }
+                          placeholder="0"
+                          className="select-trigger-premium h-10"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ════════════════════════════════════ */}
+                  {/* SECTION 5 — Livraison                */}
+                  {/* ════════════════════════════════════ */}
+                  <div className="stat-card">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Truck className="h-4 w-4" style={{ color: "var(--primary)" }} />
+                      <span className="text-sm font-semibold" style={{ color: "var(--textPrimary)" }}>Livraison</span>
+                    </div>
+                    <p className="text-xs mb-3" style={{ color: "var(--textMuted)" }}>Laissez 0 si livraison gratuite ou non disponible</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="livraison_domicile" style={{ fontSize: "0.8rem", color: "var(--textSecondary)", fontWeight: 600, letterSpacing: "0.02em" }}>A domicile (DA)</Label>
+                        <Input
+                          id="livraison_domicile"
+                          type="number"
+                          min={0}
+                          value={form.livraison_domicile}
+                          onChange={(e) =>
+                            setForm((f) => ({ ...f, livraison_domicile: Number(e.target.value) }))
+                          }
+                          placeholder="0"
+                          className="select-trigger-premium h-10"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="livraison_bureau" style={{ fontSize: "0.8rem", color: "var(--textSecondary)", fontWeight: 600, letterSpacing: "0.02em" }}>Au bureau (DA)</Label>
+                        <Input
+                          id="livraison_bureau"
+                          type="number"
+                          min={0}
+                          value={form.livraison_bureau}
+                          onChange={(e) =>
+                            setForm((f) => ({ ...f, livraison_bureau: Number(e.target.value) }))
+                          }
+                          placeholder="0"
+                          className="select-trigger-premium h-10"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ════════════════════════════════════ */}
+                  {/* SECTION 6 — Variantes                */}
+                  {/* ════════════════════════════════════ */}
+                  <div className="stat-card">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Palette className="h-4 w-4" style={{ color: "var(--primary)" }} />
+                      <Ruler className="h-4 w-4" style={{ color: "var(--accent)" }} />
+                      <span className="text-sm font-semibold" style={{ color: "var(--textPrimary)" }}>Variantes</span>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="tailles" style={{ fontSize: "0.8rem", color: "var(--textSecondary)", fontWeight: 600, letterSpacing: "0.02em" }}>Tailles (separees par des virgules)</Label>
+                        <Input
+                          id="tailles"
+                          value={form.tailles}
+                          onChange={(e) =>
+                            setForm((f) => ({ ...f, tailles: e.target.value }))
+                          }
+                          placeholder="S, M, L, XL"
+                          className="select-trigger-premium h-10"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="couleurs" style={{ fontSize: "0.8rem", color: "var(--textSecondary)", fontWeight: 600, letterSpacing: "0.02em" }}>Couleurs (separees par des virgules)</Label>
+                        <Input
+                          id="couleurs"
+                          value={form.couleurs}
+                          onChange={(e) =>
+                            setForm((f) => ({ ...f, couleurs: e.target.value }))
+                          }
+                          placeholder="Rouge, Bleu, Noir"
+                          className="select-trigger-premium h-10"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Save error */}
+                  {saveError && (
+                    <div className="flex items-center gap-2 p-3 rounded-xl" style={{ background: "var(--errorDim)", border: "1px solid rgba(239, 68, 68, 0.2)" }}>
+                      <AlertCircle className="h-4 w-4 shrink-0" style={{ color: "var(--error)" }} />
+                      <p className="text-sm" style={{ color: "var(--error)" }}>{saveError}</p>
+                    </div>
+                  )}
+
+                  {/* Submit button */}
+                  <button
+                    onClick={handleSave}
+                    disabled={!form.nom || saving}
+                    className="btn-gradient w-full py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 ease-out"
+                    style={{ color: "var(--textInverse)" }}
+                  >
+                    {saving ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        {editProduct ? "Enregistrement..." : "Ajout..."}
+                      </span>
+                    ) : (
+                      editProduct ? "Enregistrer les modifications" : "Ajouter le produit"
+                    )}
+                  </button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
       </div>
 
+      {/* Search results info */}
       {searchQuery && (
-        <p className="text-sm text-muted-foreground">
-          {filteredProduits.length} résultat(s) pour &quot;{searchQuery}&quot;
-        </p>
+        <div className="flex items-center gap-2 px-1 animate-fade-down">
+          <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--primary)" }} />
+          <p className="text-sm" style={{ color: "var(--textMuted)" }}>
+            {filteredProduits.length} resultat{filteredProduits.length > 1 ? "s" : ""} pour &quot;{searchQuery}&quot;
+          </p>
+        </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {filteredProduits.map((p) => (
-          <Card key={p.id} className={!p.actif ? "opacity-60" : ""}>
-            <CardContent className="p-4">
-              <div className="relative aspect-square bg-muted rounded-lg mb-3 overflow-hidden group">
-                {(p.photos_produit?.length > 0 || p.photo_url) ? (
+      {/* ═══ PRODUCT GRID ═══ */}
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {filteredProduits.map((p, idx) => (
+          <div
+            key={p.id}
+            className={`product-card ${!p.actif ? "opacity-50" : ""}`}
+            style={{ animation: `fade-up 500ms var(--ease-out) ${idx * 60}ms both` }}
+          >
+            {/* Product Image */}
+            <div className="product-image" style={{ position: "relative", aspectRatio: "1", overflow: "hidden", background: "var(--bgSecondary)" }}>
+              {(p.photos_produit?.length > 0 || p.photo_url) ? (
+                <>
                   <img
                     src={p.photos_produit?.[0] || p.photo_url}
                     alt={p.nom}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover transition-all duration-500 ease-out group-hover:scale-105"
                     onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }}
                   />
+                  <div className="product-overlay" />
+                </>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center" style={{ background: "var(--bgSecondary)" }}>
+                  <Package className="h-14 w-14" style={{ color: "var(--textMuted)", opacity: 0.4 }} />
+                </div>
+              )}
+
+              {/* Badges overlay */}
+              <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
+                {p.stock === 0 ? (
+                  <span className="tag" style={{ background: "var(--errorDim)", color: "var(--error)", borderColor: "rgba(239,68,68,0.2)" }}>
+                    <AlertTriangle className="h-3 w-3" /> Epuise
+                  </span>
+                ) : p.stock < 5 ? (
+                  <span className="tag" style={{ background: "var(--warningDim)", color: "var(--warning)", borderColor: "rgba(245,158,11,0.2)" }}>
+                    <AlertTriangle className="h-3 w-3" /> Stock: {p.stock}
+                  </span>
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Package className="h-12 w-12 text-muted-foreground" />
-                  </div>
-                )}
-                {(p.photos_reelles?.length > 0) && (
-                  <div className="absolute bottom-2 right-2 bg-amber-500/80 text-white text-[10px] rounded-full px-2 py-0.5">
-                    📸 {p.photos_reelles.length} réelle{p.photos_reelles.length > 1 ? 's' : ''}
-                  </div>
+                  <span className="tag">
+                    En stock: {p.stock}
+                  </span>
                 )}
               </div>
-              <div className="space-y-2">
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-semibold truncate">{p.nom}</h3>
-                  <div className="flex gap-1 shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => handleEdit(p)}
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-destructive"
-                      onClick={() => setDeleteTarget(p)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
+
+              {/* Real photos count */}
+              {(p.photos_reelles?.length > 0) && (
+                <div className="absolute bottom-3 right-3 z-10">
+                  <span className="tag tag-accent text-[10px] flex items-center gap-1">
+                    <Camera className="h-2.5 w-2.5" />
+                    {p.photos_reelles.length} reelle{p.photos_reelles.length > 1 ? "s" : ""}
+                  </span>
                 </div>
-                <p className="text-sm text-muted-foreground line-clamp-2">
+              )}
+
+            </div>
+
+            {/* Product Info */}
+            <div className="p-4 space-y-3">
+              {/* Title + Actions */}
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="font-semibold text-sm truncate" style={{ color: "var(--textPrimary)" }}>{p.nom}</h3>
+                <div className="flex gap-1.5 shrink-0">
+                  <button
+                    onClick={() => handleEdit(p)}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-200 ease-out hover:scale-105"
+                    style={{ background: "var(--primaryDim)", color: "var(--primary)", border: "1px solid var(--border)" }}
+                    title="Modifier"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setDeleteTarget(p)}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-200 ease-out hover:scale-105"
+                    style={{ background: "var(--errorDim)", color: "var(--error)", border: "1px solid rgba(239,68,68,0.15)" }}
+                    title="Supprimer"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Description */}
+              {p.description && (
+                <p className="text-xs leading-relaxed line-clamp-2" style={{ color: "var(--textMuted)" }}>
                   {p.description}
                 </p>
-                <div className="flex items-center justify-between">
-                  <span className="font-bold">
-                    {p.prix.toLocaleString()} DA
-                  </span>
-                  <div className="flex gap-1">
-                    {p.stock === 0 ? (
-                      <Badge variant="destructive">Épuisé</Badge>
-                    ) : p.stock < 5 ? (
-                      <Badge variant="destructive" className="flex items-center gap-1">
-                        <AlertTriangle className="h-3 w-3" />
-                        Stock: {p.stock}
-                      </Badge>
-                    ) : (
-                      <Badge className="bg-[#ff6b35]/20 text-[#ff6b35] border-[rgba(255,107,53,0.3)]">En stock: {p.stock}</Badge>
-                    )}
-                  </div>
-                </div>
-                {(p.tailles?.length > 0 || p.couleurs?.length > 0) && (
-                  <div className="flex flex-wrap gap-1 text-xs text-muted-foreground">
-                    {p.tailles?.length > 0 && (
-                      <span>Tailles: {p.tailles.join(", ")}</span>
-                    )}
-                    {p.couleurs?.length > 0 && (
-                      <span>Couleurs: {p.couleurs.join(", ")}</span>
-                    )}
-                  </div>
-                )}
-                <Button
-                  variant={p.actif ? "outline" : "default"}
-                  size="sm"
-                  className="w-full"
-                  onClick={() => toggleActif(p)}
-                >
-                  {p.actif ? "Désactiver" : "Activer"}
-                </Button>
+              )}
+
+              {/* Price + Tags */}
+              <div className="flex items-center justify-between">
+                <span className="text-lg font-bold" style={{ color: "var(--primary)" }}>
+                  {p.prix.toLocaleString()} <span className="text-xs font-medium" style={{ color: "var(--textMuted)" }}>DA</span>
+                </span>
               </div>
-            </CardContent>
-          </Card>
-        ))}
-        {filteredProduits.length === 0 && (
-          <div className="col-span-full text-center py-12 text-muted-foreground">
-            {searchQuery
-              ? `Aucun produit trouvé pour "${searchQuery}"`
-              : 'Aucun produit pour le moment. Cliquez sur "Ajouter" pour commencer.'}
+
+              {/* Sizes & Colors chips */}
+              {(p.tailles?.length > 0 || p.couleurs?.length > 0) && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {p.tailles?.length > 0 && p.tailles.map((t) => (
+                    <span key={t} className="px-2 py-0.5 text-[10px] font-medium rounded-md" style={{ background: "var(--bgHover)", color: "var(--textSecondary)", border: "1px solid var(--borderSubtle)" }}>
+                      {t}
+                    </span>
+                  ))}
+                  {p.couleurs?.length > 0 && p.couleurs.map((c) => (
+                    <span key={c} className="px-2 py-0.5 text-[10px] font-medium rounded-md" style={{ background: "var(--accentDim)", color: "var(--accent)", border: "1px solid rgba(124,58,237,0.15)" }}>
+                      {c}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Toggle active button */}
+              <button
+                onClick={() => toggleActif(p)}
+                className={`w-full py-2 rounded-lg text-xs font-medium transition-all duration-200 ease-out ${
+                  p.actif
+                    ? "hover:bg-red-500/10 hover:text-red-400"
+                    : ""
+                }`}
+                style={{
+                  background: p.actif ? "var(--primaryDim)" : "var(--gradientPrimary)",
+                  color: p.actif ? "var(--primary)" : "var(--textInverse)",
+                  border: p.actif ? "1px solid var(--border)" : "none",
+                }}
+              >
+                {p.actif ? "Desactiver" : "Activer"}
+              </button>
+            </div>
           </div>
-        )}
+        ))}
       </div>
 
+      {/* ═══ EMPTY STATE ═══ */}
+      {filteredProduits.length === 0 && !loading && (
+        <EmptyState
+          icon={Package}
+          title={searchQuery ? "Aucun resultat" : "Catalogue vide"}
+          description={searchQuery ? `Aucun produit trouve pour "${searchQuery}"` : "Vous n'avez pas encore de produits. Cliquez sur \"Nouveau produit\" pour commencer."}
+          action={searchQuery ? undefined : { label: "Ajouter un produit", onClick: () => { setEditProduct(null); setForm(defaultForm); setDescriptionVisuelle(null); setPhotoItemsProduit([]); setPhotoItemsReelles([]); setOpen(true) } }}
+        />
+      )}
+
+      {/* ═══ DELETE CONFIRMATION DIALOG ═══ */}
       <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="dialog-content-premium max-w-sm">
           <DialogHeader>
-            <DialogTitle>Confirmer la suppression</DialogTitle>
-            <DialogDescription>
-              Êtes-vous sûr de vouloir supprimer <strong>{deleteTarget?.nom}</strong> ? Cette action est irréversible.
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "var(--errorDim)", border: "1px solid rgba(239,68,68,0.15)" }}>
+                <AlertTriangle className="h-5 w-5" style={{ color: "var(--error)" }} />
+              </div>
+              <DialogTitle style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: "1.15rem", color: "var(--textPrimary)" }}>
+                Confirmer la suppression
+              </DialogTitle>
+            </div>
+            <DialogDescription style={{ color: "var(--textSecondary)", fontSize: "0.875rem", lineHeight: "1.5" }}>
+              Etes-vous sur de vouloir supprimer <strong style={{ color: "var(--textPrimary)" }}>{deleteTarget?.nom}</strong> ? Cette action est irreversible.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+          <DialogFooter className="gap-2 mt-2">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteTarget(null)}
+              className="flex-1"
+              style={{ borderRadius: "var(--radius-md)", borderColor: "var(--border)", color: "var(--textSecondary)", background: "transparent" }}
+            >
               Annuler
             </Button>
-            <Button variant="destructive" onClick={handleDelete}>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              className="flex-1"
+              style={{ borderRadius: "var(--radius-md)" }}
+            >
               Supprimer
             </Button>
           </DialogFooter>

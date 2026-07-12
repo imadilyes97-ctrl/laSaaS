@@ -1,54 +1,63 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import gsap from 'gsap'
 
 /**
  * Adds GSAP entrance animations to dashboard pages.
- * Just mount this component once anywhere in the dashboard layout.
+ * Mount once in the dashboard layout.
  */
 export default function DashboardAnimations() {
+  const initedRef = useRef(false)
+
   useEffect(() => {
-    // Stats cards — stagger entrance with card flip
-    gsap.fromTo(
-      '.stat-card-anim',
-      { opacity: 0, y: 30, scale: 0.95 },
-      {
-        opacity: 1,
-        y: 0,
-        scale: 1,
-        duration: 0.6,
-        stagger: 0.08,
-        ease: 'cubic-bezier(0.23, 1, 0.32, 1)',
-      }
-    )
+    if (initedRef.current) return
+    initedRef.current = true
 
-    // Chart area — fade up
-    gsap.fromTo(
-      '.chart-anim',
-      { opacity: 0, y: 20 },
-      {
-        opacity: 1,
-        y: 0,
-        duration: 0.8,
-        ease: 'cubic-bezier(0.23, 1, 0.32, 1)',
-        delay: 0.3,
-      }
-    )
+    const ctx = gsap.context(() => {
+      // Stats cards stagger entrance
+      gsap.fromTo(
+        '.stat-card',
+        { opacity: 0, y: 24, scale: 0.96 },
+        {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.5,
+          stagger: 0.06,
+          ease: 'cubic-bezier(0.23, 1, 0.32, 1)',
+        }
+      )
 
-    // Table rows — stagger
-    gsap.fromTo(
-      '.dashboard-table tbody tr',
-      { opacity: 0, x: -10 },
-      {
-        opacity: 1,
-        x: 0,
-        duration: 0.4,
-        stagger: 0.04,
-        ease: 'cubic-bezier(0.23, 1, 0.32, 1)',
-        delay: 0.5,
-      }
-    )
+      // Charts fade-up
+      gsap.fromTo(
+        '.chart-container',
+        { opacity: 0, y: 20 },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 0.7,
+          ease: 'cubic-bezier(0.23, 1, 0.32, 1)',
+          delay: 0.2,
+        }
+      )
+
+      // Table rows stagger
+      gsap.fromTo(
+        '.table-premium tbody tr',
+        { opacity: 0, x: -8 },
+        {
+          opacity: 1,
+          x: 0,
+          duration: 0.35,
+          stagger: 0.03,
+          ease: 'cubic-bezier(0.23, 1, 0.32, 1)',
+          delay: 0.3,
+        }
+      )
+    })
+
+    return () => ctx.revert()
   }, [])
 
   return null

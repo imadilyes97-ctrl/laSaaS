@@ -20,11 +20,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { Copy, Eye, EyeOff, RefreshCw, Bot, ImageUp, MessageSquare, User, CheckCircle2, XCircle, AlertCircle, RotateCw, BarChart3, ShoppingCart, Send, Loader2, Check } from "lucide-react"
+import { Copy, Eye, EyeOff, RefreshCw, Bot, ImageUp, MessageSquare, User, CheckCircle2, XCircle, AlertCircle, RotateCw, BarChart3, ShoppingCart, Send, Loader2, Check, Sparkles, Shield, Globe, BookOpen, Zap, Key, Webhook, Smartphone, Paintbrush, Settings2 } from "lucide-react"
 import { v4 as uuidv4 } from "uuid"
 import { format, parseISO, startOfDay } from "date-fns"
 import { fr } from "date-fns/locale"
 import type { ChatbotConfig, Conversation, Message } from "@/lib/types"
+import { LoadingSkeleton, ErrorState } from "@/components/PageStates"
 
 export default function ChatbotPage() {
   const [config, setConfig] = useState<ChatbotConfig | null>(null)
@@ -415,13 +416,11 @@ Réponds toujours de manière ${prompt_ton} et dans la langue ${prompt_langue}.`
       const contentType = resp.headers.get("Content-Type")
 
       if (contentType?.includes("text/event-stream")) {
-        // Mode streaming : afficher la réponse token par token
         const reader = resp.body!.getReader()
         const decoder = new TextDecoder()
         let accumulated = ""
         let buffer = ""
 
-        // Ajouter un message assistant vide qui sera rempli progressivement
         setTestMessages((prev) => [...prev, { role: "assistant", content: "" }])
 
         while (true) {
@@ -430,7 +429,7 @@ Réponds toujours de manière ${prompt_ton} et dans la langue ${prompt_langue}.`
 
           buffer += decoder.decode(value, { stream: true })
           const lines = buffer.split("\n")
-          buffer = lines.pop() || "" // garder la ligne incomplète
+          buffer = lines.pop() || ""
 
           for (const line of lines) {
             if (!line.trim()) continue
@@ -451,7 +450,6 @@ Réponds toujours de manière ${prompt_ton} et dans la langue ${prompt_langue}.`
           })
         }
       } else {
-        // Fallback non-streaming
         const data = await resp.json()
         const botMsg = { role: "assistant" as const, content: data.reply || "Désolée, je n'ai pas pu répondre." }
         setTestMessages((prev) => [...prev, botMsg])
@@ -465,125 +463,131 @@ Réponds toujours de manière ${prompt_ton} et dans la langue ${prompt_langue}.`
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="flex flex-col items-center gap-2">
-          <RotateCw className="h-6 w-6 animate-spin text-muted-foreground" />
-          <p className="text-muted-foreground">Chargement...</p>
-        </div>
-      </div>
-    )
+    return <LoadingSkeleton />
   }
 
   if (hasError) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="flex flex-col items-center gap-4 text-center max-w-md">
-          <AlertCircle className="h-12 w-12 text-destructive" />
-          <div>
-            <h2 className="text-lg font-semibold">Erreur de chargement</h2>
-            <p className="text-muted-foreground mt-1">{errorMessage}</p>
-          </div>
-          <Button onClick={loadData} variant="outline" className="gap-2">
-            <RotateCw className="h-4 w-4" />
-            Réessayer
-          </Button>
-        </div>
-      </div>
-    )
+    return <ErrorState message={errorMessage} onRetry={loadData} />
   }
 
   if (!config) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Aucune configuration trouvée.</p>
-      </div>
-    )
+    return <ErrorState message="Aucune configuration trouvée." />
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Chatbot</h1>
-          <p className="text-muted-foreground">Configurez votre assistant virtuel</p>
+    <div className="space-y-8 pb-8">
+      {/* Header */}
+      <div className="flex items-start justify-between flex-wrap gap-4">
+        <div className="page-header mb-0">
+          <div className="flex items-center gap-3">
+            <div className="stat-icon w-12 h-12 rounded-2xl">
+              <Bot className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="flex items-center gap-3">
+                Chatbot
+                <span className={`tag ${config.actif ? "" : "tag-accent"}`}>
+                  {config.actif ? (
+                    <><CheckCircle2 className="h-3 w-3" /> Actif</>
+                  ) : (
+                    <><XCircle className="h-3 w-3" /> Inactif</>
+                  )}
+                </span>
+              </h1>
+              <p>Configurez votre assistant virtuel</p>
+            </div>
+          </div>
         </div>
-        <Button variant="outline" className="gap-2" onClick={() => { setTestMessages([]); setTestOpen(true) }}>
-          <MessageSquare className="h-4 w-4" />
-          Tester le chatbot
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            variant={config.actif ? "default" : "outline"}
+            size="sm"
+            onClick={toggleActif}
+            className="gap-2 rounded-xl"
+            style={
+              config.actif
+                ? { background: "rgba(255, 107, 53, 0.15)", color: "#ff6b35", borderColor: "rgba(255, 107, 53, 0.3)" }
+                : {}
+            }
+          >
+            {config.actif ? (
+              <><XCircle className="h-4 w-4" /> Désactiver</>
+            ) : (
+              <><CheckCircle2 className="h-4 w-4" /> Activer</>
+            )}
+          </Button>
+          <Button
+            onClick={() => { setTestMessages([]); setTestOpen(true) }}
+            className="btn-gradient btn-glow gap-2 rounded-xl"
+          >
+            <MessageSquare className="h-4 w-4" />
+            Tester le chatbot
+          </Button>
+        </div>
       </div>
 
+      {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Messages aujourd&apos;hui</CardTitle>
-            <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-[#ff6b35]">{stats.messagesToday}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Commandes aujourd&apos;hui</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-[#ff6b35]">{stats.ordersToday}</div>
-          </CardContent>
-        </Card>
+        <div className="stat-card">
+          <div className="flex items-center justify-between mb-1">
+            <span className="stat-label text-xs uppercase tracking-wider font-semibold" style={{ color: "#64647a" }}>
+              Messages aujourd&apos;hui
+            </span>
+            <div className="stat-icon w-9 h-9 rounded-lg">
+              <MessageSquare className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="stat-value">{stats.messagesToday}</div>
+        </div>
+        <div className="stat-card">
+          <div className="flex items-center justify-between mb-1">
+            <span className="stat-label text-xs uppercase tracking-wider font-semibold" style={{ color: "#64647a" }}>
+              Commandes aujourd&apos;hui
+            </span>
+            <div className="stat-icon w-9 h-9 rounded-lg">
+              <ShoppingCart className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="stat-value">{stats.ordersToday}</div>
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Bot className="h-5 w-5" />
-              Configuration
-            </CardTitle>
-            <CardDescription>
-              Personnalisez l&apos;apparence et le comportement de votre chatbot
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label>Statut</Label>
-              <Button
-                variant={config.actif ? "default" : "outline"}
-                size="sm"
-                onClick={toggleActif}
-                className="gap-2"
-              >
-                {config.actif ? (
-                  <>
-                    <CheckCircle2 className="h-4 w-4" />
-                    Activé
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="h-4 w-4" />
-                    Désactivé
-                  </>
-                )}
-              </Button>
+        {/* Configuration */}
+        <div className="card-premium p-0">
+          <div className="p-6 pb-4 border-b" style={{ borderColor: "var(--border)" }}>
+            <div className="flex items-center gap-3">
+              <div className="stat-icon w-10 h-10 rounded-xl">
+                <Paintbrush className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold" style={{ color: "#fcfcfc" }}>Configuration</h3>
+                <p className="text-xs" style={{ color: "#64647a" }}>Personnalisez l&apos;apparence et le comportement de votre chatbot</p>
+              </div>
             </div>
-
+          </div>
+          <div className="p-6 space-y-5">
             <div className="space-y-2">
-              <Label>Photo de profil</Label>
+              <Label className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#9d9db5" }}>Photo de profil</Label>
               <div className="flex items-center gap-4">
                 {previewUrl || photoUrl ? (
-                  <img
-                    src={previewUrl || photoUrl}
-                    alt="Chatbot"
-                    className="w-16 h-16 rounded-full object-cover border"
-                  />
+                  <div className="relative group">
+                    <img
+                      src={previewUrl || photoUrl}
+                      alt="Chatbot"
+                      className="w-16 h-16 rounded-xl object-cover border-2"
+                      style={{ borderColor: "rgba(255, 107, 53, 0.2)" }}
+                    />
+                    <div className="absolute inset-0 rounded-xl bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <ImageUp className="h-5 w-5 text-white" />
+                    </div>
+                  </div>
                 ) : (
-                  <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center border">
-                    <Bot className="h-6 w-6 text-muted-foreground" />
+                  <div className="w-16 h-16 rounded-xl flex items-center justify-center border-2" style={{ background: "var(--primaryDim)", borderColor: "rgba(255, 107, 53, 0.2)" }}>
+                    <Bot className="h-7 w-7" style={{ color: "#ff6b35" }} />
                   </div>
                 )}
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1.5">
                   <input
                     ref={fileRef}
                     type="file"
@@ -597,39 +601,44 @@ Réponds toujours de manière ${prompt_ton} et dans la langue ${prompt_langue}.`
                     size="sm"
                     onClick={() => fileRef.current?.click()}
                     disabled={uploading}
+                    className="rounded-lg gap-2 text-xs"
                   >
+                    <ImageUp className="h-3.5 w-3.5" />
                     {uploading ? "Upload..." : "Changer la photo"}
                   </Button>
                   {uploadError && (
-                    <p className="text-xs text-destructive">{uploadError}</p>
+                    <p className="text-xs" style={{ color: "#ef4444" }}>{uploadError}</p>
                   )}
                 </div>
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="nom_chatbot">Nom du chatbot</Label>
+              <Label htmlFor="nom_chatbot" className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#9d9db5" }}>Nom du chatbot</Label>
               <Input
                 id="nom_chatbot"
                 value={nom_chatbot}
                 onChange={(e) => setNomChatbot(e.target.value)}
+                className="rounded-lg"
+                style={{ background: "#0b0716", borderColor: "var(--border)", color: "#fcfcfc" }}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="message">Message de bienvenue</Label>
+              <Label htmlFor="message" className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#9d9db5" }}>Message de bienvenue</Label>
               <textarea
                 id="message"
                 value={message_bienvenue}
                 onChange={(e) => setMessageBienvenue(e.target.value)}
-                className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex min-h-[90px] w-full rounded-lg border px-3 py-2.5 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors"
+                style={{ background: "#0b0716", borderColor: "var(--border)", color: "#fcfcfc", resize: "vertical" }}
               />
             </div>
 
             <div className="space-y-2">
-              <Label>Langue</Label>
+              <Label className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#9d9db5" }}>Langue</Label>
               <Select value={langue} onValueChange={setLangue}>
-                <SelectTrigger>
+                <SelectTrigger className="rounded-lg" style={{ background: "#0b0716", borderColor: "var(--border)" }}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -640,172 +649,211 @@ Réponds toujours de manière ${prompt_ton} et dans la langue ${prompt_langue}.`
               </Select>
             </div>
 
-            <Button onClick={saveConfig} className="w-full gap-2" disabled={saving}>
+            <Button onClick={saveConfig} className="btn-gradient btn-glow w-full gap-2 rounded-xl" disabled={saving}>
               {saving ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : saved ? (
                 <Check className="h-4 w-4" />
               ) : null}
-              {saving ? "Enregistrement..." : saved ? "Enregistré !" : "Enregistrer"}
+              {saving ? "Enregistrement..." : saved ? "Enregistré !" : "Enregistrer la configuration"}
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
-              Connexion N8n
-            </CardTitle>
-            <CardDescription>
-              Utilisez ces informations pour connecter votre chatbot au webhook N8n
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        {/* Connexion N8n */}
+        <div className="card-premium p-0">
+          <div className="p-6 pb-4 border-b" style={{ borderColor: "var(--border)" }}>
+            <div className="flex items-center gap-3">
+              <div className="stat-icon w-10 h-10 rounded-xl">
+                <Webhook className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold" style={{ color: "#fcfcfc" }}>Connexion N8n</h3>
+                <p className="text-xs" style={{ color: "#64647a" }}>Connectez votre chatbot au webhook N8n</p>
+              </div>
+            </div>
+          </div>
+          <div className="p-6 space-y-5">
             <div className="space-y-2">
-              <Label>URL du Webhook</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={typeof window !== "undefined" ? `${window.location.origin}/api/webhook` : ""}
-                  readOnly
-                  className="font-mono text-xs"
-                />
+              <Label className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#9d9db5" }}>URL du Webhook</Label>
+              <div className="glass-light rounded-xl p-2 flex gap-2 items-center">
+                <div className="flex-1 flex items-center gap-2 px-3 py-1.5">
+                  <Zap className="h-3.5 w-3.5 shrink-0" style={{ color: "#ff6b35" }} />
+                  <code className="text-xs font-mono truncate" style={{ color: "#9d9db5" }}>
+                    {typeof window !== "undefined" ? `${window.location.origin}/api/webhook` : ""}
+                  </code>
+                </div>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="icon"
-                  className="shrink-0"
+                  className="h-8 w-8 rounded-lg shrink-0"
                   onClick={() => {
                     navigator.clipboard.writeText(
                       typeof window !== "undefined" ? `${window.location.origin}/api/webhook` : ""
                     )
                   }}
                 >
-                  <Copy className="h-4 w-4" />
+                  <Copy className="h-3.5 w-3.5" />
                 </Button>
               </div>
             </div>
+
             <div className="space-y-2">
-              <Label>Secret Token du Chatbot</Label>
-              <div className="flex gap-2">
+              <Label className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#9d9db5" }}>Secret Token du Chatbot</Label>
+              <div className="glass-light rounded-xl p-2 flex gap-2 items-center">
                 <div className="relative flex-1">
-                  <Input
-                    value={config.secret_token}
-                    readOnly
-                    type={showToken ? "text" : "password"}
-                    className="font-mono text-xs pr-10"
-                  />
+                  <div className="flex items-center gap-2 px-3 py-1.5">
+                    <Key className="h-3.5 w-3.5 shrink-0" style={{ color: "#ff6b35" }} />
+                    <code className="text-xs font-mono truncate" style={{ color: showToken ? "#fcfcfc" : "#9d9db5" }}>
+                      {showToken ? config.secret_token : "••••••••••••••••"}
+                    </code>
+                  </div>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="absolute right-0 top-0 h-full"
+                    className="absolute right-0 top-0 h-full w-8 rounded-lg"
                     onClick={() => setShowToken(!showToken)}
                   >
-                    {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showToken ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                   </Button>
                 </div>
-                <Button variant="outline" size="icon" onClick={copyToken}>
-                  <Copy className="h-4 w-4" />
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg shrink-0" onClick={copyToken}>
+                  <Copy className="h-3.5 w-3.5" />
                 </Button>
-                <Button variant="outline" size="icon" onClick={generateToken}>
-                  <RefreshCw className="h-4 w-4" />
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg shrink-0" onClick={generateToken}>
+                  <RefreshCw className="h-3.5 w-3.5" />
                 </Button>
               </div>
-              {copied && <p className="text-xs text-[#ff6b35]">Copié !</p>}
+              {copied && (
+                <p className="text-xs flex items-center gap-1.5" style={{ color: "#ff6b35" }}>
+                  <Check className="h-3 w-3" /> Copié dans le presse-papier
+                </p>
+              )}
             </div>
 
-            <div className="rounded-lg bg-muted p-4 space-y-2">
-              <Label className="text-base">Comment connecter N8n</Label>
-              <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
-                <li>Créez un webhook dans N8n avec la méthode <strong>POST</strong></li>
+            <div className="rounded-xl p-4 space-y-3" style={{ background: "rgba(124, 58, 237, 0.06)", border: "1px solid rgba(124, 58, 237, 0.12)" }}>
+              <div className="flex items-center gap-2">
+                <BookOpen className="h-4 w-4" style={{ color: "#7c3aed" }} />
+                <span className="text-sm font-semibold" style={{ color: "#fcfcfc" }}>Comment connecter N8n</span>
+              </div>
+              <ol className="text-xs space-y-2 list-decimal list-inside" style={{ color: "#9d9db5" }}>
+                <li>Créez un webhook dans N8n avec la méthode <strong style={{ color: "#fcfcfc" }}>POST</strong></li>
                 <li>Utilisez l&apos;URL ci-dessus comme endpoint</li>
-                <li>Ajoutez le token dans le body JSON : <code className="bg-background px-1 rounded">{'{ "token": "votre_token", "nom_client": "...", "produits": "..." }'}</code></li>
+                <li>Ajoutez le token dans le body JSON : <code className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: "#0b0716", color: "#ff6b35" }}>{'{ "token": "votre_token", "nom_client": "...", "produits": "..." }'}</code></li>
                 <li>Connectez Messenger à N8n pour recevoir les messages</li>
                 <li>Testez avec un message : envoyez les données au webhook</li>
               </ol>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bot className="h-5 w-5" />
-            Personnalité & Comportement
-          </CardTitle>
-          <CardDescription>
-            Définissez la personnalité et les règles de votre chatbot
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-2 rounded-lg border p-1">
+      {/* Personnalité & Comportement */}
+      <div className="card-premium p-0">
+        <div className="p-6 pb-4 border-b" style={{ borderColor: "var(--border)" }}>
+          <div className="flex items-center gap-3">
+            <div className="stat-icon w-10 h-10 rounded-xl">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold" style={{ color: "#fcfcfc" }}>Personnalité & Comportement</h3>
+              <p className="text-xs" style={{ color: "#64647a" }}>Définissez la personnalité et les règles de votre chatbot</p>
+            </div>
+          </div>
+        </div>
+        <div className="p-6 space-y-5">
+          <div className="glass-light rounded-xl p-1 flex gap-1">
             <button
               onClick={() => setPromptMode("guided")}
-              className={`flex-1 px-3 py-2 text-sm rounded-md transition-colors ${promptMode === "guided" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+              className="flex-1 px-3 py-2 text-sm rounded-lg transition-all duration-200 font-medium"
+              style={
+                promptMode === "guided"
+                  ? { background: "var(--gradientPrimary)", color: "#fff", boxShadow: "0 4px 15px rgba(255, 107, 53, 0.3)" }
+                  : { color: "#64647a" }
+              }
             >
               Formulaire guidé
             </button>
             <button
               onClick={() => setPromptMode("libre")}
-              className={`flex-1 px-3 py-2 text-sm rounded-md transition-colors ${promptMode === "libre" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+              className="flex-1 px-3 py-2 text-sm rounded-lg transition-all duration-200 font-medium"
+              style={
+                promptMode === "libre"
+                  ? { background: "var(--gradientPrimary)", color: "#fff", boxShadow: "0 4px 15px rgba(255, 107, 53, 0.3)" }
+                  : { color: "#64647a" }
+              }
             >
               Prompt libre
             </button>
           </div>
 
           {promptMode === "guided" ? (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>🎭 Rôle du chatbot</Label>
-                <Input
-                  value={prompt_role}
-                  onChange={(e) => setPromptRole(e.target.value)}
-                  placeholder={`Ex: "Tu es ${nom_chatbot}, conseillère commerciale pour une boutique de mode"`}
-                />
+            <div className="space-y-5">
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "#9d9db5" }}>
+                    <Smartphone className="h-3.5 w-3.5" /> Rôle du chatbot
+                  </Label>
+                  <Input
+                    value={prompt_role}
+                    onChange={(e) => setPromptRole(e.target.value)}
+                    placeholder={`Ex: "Tu es ${nom_chatbot}, conseillère commerciale"`}
+                    className="rounded-lg"
+                    style={{ background: "#0b0716", borderColor: "var(--border)", color: "#fcfcfc" }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "#9d9db5" }}>
+                    <Globe className="h-3.5 w-3.5" /> Ton de communication
+                  </Label>
+                  <Select value={prompt_ton} onValueChange={setPromptTon}>
+                    <SelectTrigger className="rounded-lg" style={{ background: "#0b0716", borderColor: "var(--border)" }}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="professionnel">Professionnel</SelectItem>
+                      <SelectItem value="amical">Amical</SelectItem>
+                      <SelectItem value="décontracté">Décontracté</SelectItem>
+                      <SelectItem value="formel">Formel</SelectItem>
+                      <SelectItem value="humoristique">Humoristique</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "#9d9db5" }}>
+                    <Globe className="h-3.5 w-3.5" /> Langue principale
+                  </Label>
+                  <Select value={prompt_langue} onValueChange={setPromptLangue}>
+                    <SelectTrigger className="rounded-lg" style={{ background: "#0b0716", borderColor: "var(--border)" }}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="fr">Français</SelectItem>
+                      <SelectItem value="ar">Arabe</SelectItem>
+                      <SelectItem value="en">Anglais</SelectItem>
+                      <SelectItem value="darija">Darija</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "#9d9db5" }}>
+                    <Shield className="h-3.5 w-3.5" /> Règles importantes
+                  </Label>
+                  <textarea
+                    value={prompt_regles}
+                    onChange={(e) => setPromptRegles(e.target.value)}
+                    placeholder="Ex: Ne jamais donner de prix sans vérifier le stock"
+                    className="flex min-h-[90px] w-full rounded-lg border px-3 py-2.5 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors"
+                    style={{ background: "#0b0716", borderColor: "var(--border)", color: "#fcfcfc", resize: "vertical" }}
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>🗣️ Ton de communication</Label>
-                <Select value={prompt_ton} onValueChange={setPromptTon}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="professionnel">Professionnel</SelectItem>
-                    <SelectItem value="amical">Amical</SelectItem>
-                    <SelectItem value="décontracté">Décontracté</SelectItem>
-                    <SelectItem value="formel">Formel</SelectItem>
-                    <SelectItem value="humoristique">Humoristique</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>🌍 Langue principale</Label>
-                <Select value={prompt_langue} onValueChange={setPromptLangue}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="fr">Français</SelectItem>
-                    <SelectItem value="ar">Arabe</SelectItem>
-                    <SelectItem value="en">Anglais</SelectItem>
-                    <SelectItem value="darija">Darija</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>📋 Règles importantes</Label>
-                <textarea
-                  value={prompt_regles}
-                  onChange={(e) => setPromptRegles(e.target.value)}
-                  placeholder="Ex: Ne jamais donner de prix sans vérifier le stock. Toujours demander le nom du client en premier."
-                  className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={generatePromptFinal} variant="outline" className="flex-1 gap-2">
+              <div className="flex gap-3">
+                <Button onClick={generatePromptFinal} variant="outline" className="flex-1 gap-2 rounded-xl">
+                  <Zap className="h-4 w-4" />
                   Générer le prompt final
                 </Button>
-                <Button onClick={handleSavePersonality} className="flex-1 gap-2" disabled={savingPersonality}>
+                <Button onClick={handleSavePersonality} className="btn-gradient btn-glow flex-1 gap-2 rounded-xl" disabled={savingPersonality}>
                   {savingPersonality ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : personalitySaved ? (
@@ -816,17 +864,20 @@ Réponds toujours de manière ${prompt_ton} et dans la langue ${prompt_langue}.`
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div className="space-y-2">
-                <Label>✍️ Prompt système personnalisé</Label>
+                <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "#9d9db5" }}>
+                  <Settings2 className="h-3.5 w-3.5" /> Prompt système personnalisé
+                </Label>
                 <textarea
                   value={prompt_libre}
                   onChange={(e) => { setPromptLibre(e.target.value); setPromptFinal(e.target.value) }}
-                  placeholder={`Ex: "Tu es Sarah, assistante virtuelle de la boutique Élégance. Tu parles en français avec un ton chaleureux..."`}
-                  className="flex min-h-[160px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  placeholder={`Ex: "Tu es Sarah, assistante virtuelle de la boutique Élégance..."`}
+                  className="flex min-h-[180px] w-full rounded-lg border px-3 py-2.5 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors"
+                  style={{ background: "#0b0716", borderColor: "var(--border)", color: "#fcfcfc", resize: "vertical" }}
                 />
               </div>
-              <Button onClick={handleSavePersonality} className="w-full gap-2" disabled={savingPersonality}>
+              <Button onClick={handleSavePersonality} className="btn-gradient btn-glow w-full gap-2 rounded-xl" disabled={savingPersonality}>
                 {savingPersonality ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : personalitySaved ? (
@@ -838,111 +889,151 @@ Réponds toujours de manière ${prompt_ton} et dans la langue ${prompt_langue}.`
           )}
 
           {prompt_final && (
-            <div className="space-y-2">
-              <Label>Aperçu du prompt final</Label>
-              <div className="rounded-lg bg-[#0a0f1a] border border-cyan-500/30 p-3 font-mono text-xs text-cyan-300 whitespace-pre-wrap max-h-40 overflow-y-auto">
+            <div className="space-y-2 pt-2">
+              <Label className="text-xs font-semibold" style={{ color: "#9d9db5" }}>Aperçu du prompt final</Label>
+              <div className="rounded-xl p-4 font-mono text-xs whitespace-pre-wrap max-h-40 overflow-y-auto" style={{ background: "#0b0716", border: "1px solid rgba(124, 58, 237, 0.25)", color: "#a78bfa" }}>
                 {prompt_final}
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Dernières conversations
-            </CardTitle>
-            <CardDescription>
-              Les {conversations.length} dernières conversations
-            </CardDescription>
+      {/* Dernières conversations */}
+      <div className="card-premium p-0">
+        <div className="p-6 pb-4 border-b flex items-center justify-between flex-wrap gap-2" style={{ borderColor: "var(--border)" }}>
+          <div className="flex items-center gap-3">
+            <div className="stat-icon w-10 h-10 rounded-xl">
+              <MessageSquare className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold" style={{ color: "#fcfcfc" }}>Dernières conversations</h3>
+              <p className="text-xs" style={{ color: "#64647a" }}>Les {conversations.length} dernières conversations</p>
+            </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2 max-h-[400px] overflow-y-auto">
+          <Badge variant="outline" className="rounded-lg text-xs" style={{ borderColor: "rgba(255, 107, 53, 0.2)", color: "#9d9db5" }}>
+            {conversations.length} conversation{conversations.length !== 1 ? "s" : ""}
+          </Badge>
+        </div>
+        <div className="p-6">
+          <div className="space-y-2 max-h-[420px] overflow-y-auto scrollbar-thin">
             {conversations.slice(0, 10).map((conv) => (
               <div
                 key={conv.id}
-                className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50"
+                className="flex items-center justify-between p-3.5 rounded-xl transition-all duration-200 cursor-pointer"
+                style={{ border: "1px solid var(--border)", background: "rgba(11, 7, 22, 0.5)" }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "rgba(255, 107, 53, 0.2)";
+                  e.currentTarget.style.background = "rgba(255, 107, 53, 0.04)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "var(--border)";
+                  e.currentTarget.style.background = "rgba(11, 7, 22, 0.5)";
+                }}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                    <User className="h-4 w-4 text-primary" />
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "var(--primaryDim)" }}>
+                    <User className="h-4 w-4" style={{ color: "#ff6b35" }} />
                   </div>
                   <div>
-                    <p className="text-sm font-medium">{conv.sender_id}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {conv.messages?.length || 0} message(s)
+                    <p className="text-sm font-medium" style={{ color: "#fcfcfc" }}>{conv.sender_id}</p>
+                    <p className="text-xs" style={{ color: "#64647a" }}>
+                      {conv.messages?.length || 0} message{(conv.messages?.length || 0) !== 1 ? "s" : ""}
                     </p>
                   </div>
                 </div>
-                <span className="text-xs text-muted-foreground">
-                  {format(parseISO(conv.created_at), "dd/MM HH:mm", { locale: fr })}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs" style={{ color: "#64647a" }}>
+                    {format(parseISO(conv.created_at), "dd/MM HH:mm", { locale: fr })}
+                  </span>
+                </div>
               </div>
             ))}
             {conversations.length === 0 && (
-              <p className="text-center py-8 text-muted-foreground">
-                Aucune conversation pour le moment
-              </p>
+              <div className="flex flex-col items-center justify-center py-12 gap-3">
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: "var(--primaryDim)" }}>
+                  <MessageSquare className="h-6 w-6" style={{ color: "#ff6b35" }} />
+                </div>
+                <p className="text-sm" style={{ color: "#64647a" }}>Aucune conversation pour le moment</p>
+              </div>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
+      {/* Test Dialog */}
       <Dialog open={testOpen} onOpenChange={setTestOpen}>
-        <DialogContent className="max-w-sm bg-[#120f1e] border-[#ff6b35]/30">
+        <DialogContent className="dialog-content-premium max-w-sm">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-white">
-              <Bot className="h-5 w-5 text-[#ff6b35]" />
+            <DialogTitle className="flex items-center gap-2 text-lg" style={{ color: "#fcfcfc" }}>
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "var(--primaryDim)" }}>
+                <Bot className="h-4 w-4" style={{ color: "#ff6b35" }} />
+              </div>
               Tester {nom_chatbot}
             </DialogTitle>
           </DialogHeader>
-          <div className="h-72 overflow-y-auto space-y-3 border border-[rgba(255,107,53,0.12)] rounded-lg p-3 bg-[#0c0a14]">
+          <div className="h-80 overflow-y-auto space-y-3 rounded-xl p-3" style={{ border: "1px solid var(--border)", background: "rgba(11, 7, 22, 0.6)" }}>
             {testMessages.length === 0 && (
-              <div className="flex items-start gap-2">
-                <div className="w-6 h-6 rounded-full bg-[#ff6b35]/20 flex items-center justify-center shrink-0 mt-0.5">
-                  <Bot className="h-3.5 w-3.5 text-[#ff6b35]" />
+              <div className="flex items-start gap-2.5 animate-in fade-in duration-300">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ background: "var(--primaryDim)" }}>
+                  <Bot className="h-3.5 w-3.5" style={{ color: "#ff6b35" }} />
                 </div>
-                <div className="bg-[#120f1e] text-white rounded-lg p-2 text-sm">
+                <div className="rounded-xl px-3.5 py-2.5 text-sm max-w-[80%]" style={{ background: "rgba(15, 10, 30, 0.8)", border: "1px solid var(--border)", color: "#fcfcfc" }}>
                   {message_bienvenue || `Bonjour ! Je suis ${nom_chatbot}. Comment puis-je vous aider ?`}
                 </div>
               </div>
             )}
             {testMessages.map((msg, i) => (
-              <div key={i} className={`flex items-start gap-2 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${msg.role === "user" ? "bg-[#ff6b35]/20" : "bg-[#ff6b35]/20"}`}>
+              <div
+                key={i}
+                className={`flex items-start gap-2.5 ${msg.role === "user" ? "flex-row-reverse" : ""} animate-in fade-in duration-200`}
+                style={{ animationDelay: `${i * 50}ms` }}
+              >
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ background: "var(--primaryDim)" }}>
                   {msg.role === "user" ? (
-                    <User className="h-3.5 w-3.5 text-[#ff6b35]" />
+                    <User className="h-3.5 w-3.5" style={{ color: "#ff6b35" }} />
                   ) : (
-                    <Bot className="h-3.5 w-3.5 text-[#ff6b35]" />
+                    <Bot className="h-3.5 w-3.5" style={{ color: "#ff6b35" }} />
                   )}
                 </div>
-                <div className={`rounded-lg p-2 text-sm max-w-[80%] ${msg.role === "user" ? "bg-[#ff6b35] text-black" : "bg-[#120f1e] text-white"}`}>
+                <div
+                  className={`rounded-xl px-3.5 py-2.5 text-sm max-w-[80%] leading-relaxed ${
+                    msg.role === "user"
+                      ? "text-white"
+                      : "text-white"
+                  }`}
+                  style={
+                    msg.role === "user"
+                      ? { background: "var(--gradientPrimary)", boxShadow: "0 4px 15px rgba(255, 107, 53, 0.25)" }
+                      : { background: "rgba(15, 10, 30, 0.8)", border: "1px solid var(--border)" }
+                  }
+                >
                   {msg.content}
                 </div>
               </div>
             ))}
             {testLoading && (
-              <div className="flex items-start gap-2">
-                <div className="w-6 h-6 rounded-full bg-[#ff6b35]/20 flex items-center justify-center shrink-0 mt-0.5">
-                  <Bot className="h-3.5 w-3.5 text-[#ff6b35]" />
+              <div className="flex items-start gap-2.5">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ background: "var(--primaryDim)" }}>
+                  <Bot className="h-3.5 w-3.5" style={{ color: "#ff6b35" }} />
                 </div>
-                <div className="bg-[#120f1e] text-[#a0a0b8] rounded-lg p-2 text-sm italic">
-                  En train d&apos;écrire...
+                <div className="rounded-xl px-3.5 py-2.5 text-sm italic" style={{ background: "rgba(15, 10, 30, 0.8)", border: "1px solid var(--border)", color: "#64647a" }}>
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    En train d&apos;écrire...
+                  </span>
                 </div>
               </div>
             )}
             <div ref={testEndRef} />
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center justify-between gap-2">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setTestMessages([])}
-              className="text-xs text-[#a0a0b8]"
+              className="text-xs rounded-lg"
+              style={{ color: "#64647a" }}
             >
               <RefreshCw className="h-3 w-3 mr-1" />
               Reset
@@ -956,9 +1047,16 @@ Réponds toujours de manière ${prompt_ton} et dans la langue ${prompt_langue}.`
               value={testInput}
               onChange={(e) => setTestInput(e.target.value)}
               placeholder="Écrivez un message..."
-              className="bg-[#0c0a14] border-[rgba(255,107,53,0.12)] text-white"
+              className="rounded-xl"
+              style={{ background: "rgba(11, 7, 22, 0.8)", borderColor: "var(--border)", color: "#fcfcfc" }}
             />
-            <Button type="submit" size="icon" disabled={!testInput.trim() || testLoading}>
+            <Button
+              type="submit"
+              size="icon"
+              disabled={!testInput.trim() || testLoading}
+              className="rounded-xl w-10 h-10 shrink-0"
+              style={{ background: "var(--gradientPrimary)" }}
+            >
               {testLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
           </form>
