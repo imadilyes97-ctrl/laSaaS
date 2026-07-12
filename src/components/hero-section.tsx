@@ -1,11 +1,15 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { LogIn, Sparkles, Play, Menu, X, Clock, Bot, LayoutDashboard, Sliders, Zap, CheckCircle2, ShoppingCart, MessageSquare, ArrowUpRight, Star, Shield, ChevronRight } from 'lucide-react'
+import { LogIn, Sparkles, Play, Menu, X, Clock, Bot, LayoutDashboard, Sliders, Zap, CheckCircle2, ShoppingCart, MessageSquare, ArrowUpRight } from 'lucide-react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import RobotAnimation from './RobotAnimation'
+import FloatingParticles from './FloatingParticles'
 import ChatDemo from './ChatDemo'
+import PricingSection from './PricingSection'
+import TestimonialsSection from './TestimonialsSection'
+import CTAFinalSection from './CTAFinalSection'
 import FAQSection from './FAQSection'
 import { EASE, useRevealStagger } from '@/lib/animations'
 
@@ -126,6 +130,7 @@ export default function HeroSection() {
     { href: '#avantages', label: 'Avantages' },
     { href: '#comment', label: 'Comment ça marche' },
     { href: '#tarifs', label: 'Tarifs' },
+    { href: '#faq', label: 'FAQ' },
   ]
 
   const avantages = [
@@ -165,6 +170,9 @@ export default function HeroSection() {
           `,
         }} />
         <div className="absolute inset-0 bg-noise pointer-events-none" />
+
+        {/* Floating particles */}
+        <FloatingParticles count={25} />
 
         {/* Robot animation background */}
         <RobotAnimation className="absolute inset-0 w-full h-full z-[0] opacity-50" />
@@ -484,6 +492,9 @@ export default function HeroSection() {
         </div>
       </section>
 
+      <TestimonialsSection />
+      <PricingSection />
+      <CTAFinalSection />
       <FAQSection />
     </>
   )

@@ -38,7 +38,7 @@ export default function FAQSection() {
   }
 
   return (
-    <section className="relative w-full py-24 sm:py-32 px-4 sm:px-6" style={{ background: '#07050a' }}>
+    <section id="faq" className="relative w-full py-24 sm:py-32 px-4 sm:px-6" style={{ background: '#07050a' }}>
       <div className="absolute inset-0 pointer-events-none" style={{
         background: 'radial-gradient(ellipse 60% 30% at 50% 100%, rgba(255, 107, 53, 0.03) 0%, transparent 60%)',
       }} />

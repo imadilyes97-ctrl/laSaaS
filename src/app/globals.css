@@ -889,6 +889,30 @@ html, body {
 }
 
 /* ═══════════════════════════════════════════════
+   Top decorative gradient bar
+   ═══════════════════════════════════════════════ */
+
+.top-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 9999;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    var(--primary) 20%,
+    var(--accent) 40%,
+    var(--primary) 60%,
+    var(--accent) 80%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: gradient-shift 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════════
    Custom scrollbar for conversations
    ═══════════════════════════════════════════════ */
 
