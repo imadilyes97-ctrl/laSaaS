@@ -1,18 +1,22 @@
 'use client'
 
 /**
- * RobotAnimation v5.2 — DIRECT VIDEO
+ * RobotAnimation v6 — CLOUDINARY CDN
  *
- * Approche native. La balise <video> avec muted + playsInline + autoPlay + loop
- * est supportée sur Chrome/Safari mobile depuis 2016+.
- * Le fond orange est un fallback si la vidéo met du temps à charger.
+ * La vidéo est servie depuis Cloudinary CDN (pas de dossier public/)
+ * → le middleware Next.js ne peut PAS l'intercepter
+ * → fonctionne sur mobile, desktop, partout
+ *
+ * Cloudinary optimise automatiquement le format et la qualité
+ * selon le navigateur et la connexion.
  */
+const VIDEO_URL = 'https://res.cloudinary.com/dyhmq2jvq/video/upload/v1783900710/linkflow/dkg2a6i8omck0mspbvu8.mp4'
+
 export default function RobotAnimation({ className }: { className?: string }) {
   return (
     <div className={className ?? 'absolute inset-0 w-full h-full'} style={{ overflow: 'hidden' }}>
-      {/* Vidéo — toujours visible, jamais cachée */}
       <video
-        src="/videos/1780840008912.mp4"
+        src={VIDEO_URL}
         muted
         playsInline
         autoPlay
